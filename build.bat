@@ -188,8 +188,14 @@ if %build_weasel% == 1 (
     set build_opencc=1
   )
 )
-if %build_data% == 1 call :build_data
-if %build_opencc% == 1 call :build_opencc_data
+if %build_data% == 1 (
+  call :build_data
+  if errorlevel 1 goto error
+)
+if %build_opencc% == 1 (
+  call :build_opencc_data
+  if errorlevel 1 goto error
+)
 
 if %build_weasel% == 0 goto end
 
@@ -259,6 +265,7 @@ rem build boost
 
 rem ---------------------------------------------------------------------------
 :build_data
+  cd /d "%WEASEL_ROOT%"
   copy %WEASEL_ROOT%\LICENSE.txt output\
   copy %WEASEL_ROOT%\README.md output\README.txt
   copy %WEASEL_ROOT%\plum\rime-install.bat output\
