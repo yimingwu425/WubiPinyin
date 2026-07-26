@@ -1,7 +1,6 @@
 #pragma once
 
-#include <winrt/WubiPinyinSettings.h>
-#include "Pages/DictionaryPage.xaml.g.h"
+#include "Pages/DictionaryPage.g.h"
 #include "WubiPinyinCore.h"
 #include <optional>
 #include <vector>
