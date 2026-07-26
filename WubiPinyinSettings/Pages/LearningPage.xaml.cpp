@@ -1,4 +1,7 @@
 #include "Pages/LearningPage.xaml.h"
+#if __has_include("LearningPage.g.cpp")
+#include "LearningPage.g.cpp"
+#endif
 
 #include "SettingsSession.h"
 

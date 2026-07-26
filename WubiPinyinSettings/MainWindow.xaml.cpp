@@ -1,4 +1,7 @@
 #include "MainWindow.xaml.h"
+#if __has_include("MainWindow.g.cpp")
+#include "MainWindow.g.cpp"
+#endif
 
 #include "Pages/AboutPage.xaml.h"
 #include "Pages/AppearancePage.xaml.h"

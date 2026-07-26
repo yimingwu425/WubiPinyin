@@ -1,4 +1,7 @@
 #include "Pages/DictionaryPage.xaml.h"
+#if __has_include("DictionaryPage.g.cpp")
+#include "DictionaryPage.g.cpp"
+#endif
 
 #include "SettingsSession.h"
 

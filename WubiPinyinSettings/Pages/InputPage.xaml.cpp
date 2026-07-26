@@ -1,4 +1,7 @@
 #include "Pages/InputPage.xaml.h"
+#if __has_include("InputPage.g.cpp")
+#include "InputPage.g.cpp"
+#endif
 
 #include "SettingsSession.h"
 

@@ -1,4 +1,7 @@
 #include "Pages/AppearancePage.xaml.h"
+#if __has_include("AppearancePage.g.cpp")
+#include "AppearancePage.g.cpp"
+#endif
 
 #include "SettingsSession.h"
 
