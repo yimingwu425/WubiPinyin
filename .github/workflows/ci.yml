@@ -58,9 +58,9 @@ jobs:
             }
           }
 
-      - name: Cache Boost
+      - name: Restore Boost
         id: cache-boost
-        uses: actions/cache@v4
+        uses: actions/cache/restore@v4
         with:
           path: ${{ env.BOOST_ROOT }}
           key: windows-2022-boost-${{ env.boost_version }}-msvc143-static-v1
@@ -72,6 +72,13 @@ jobs:
           $ErrorActionPreference = 'Stop'
           cmd /c install_boost.bat
           if ($LASTEXITCODE -ne 0) { throw 'Boost build failed.' }
+
+      - name: Save Boost
+        if: steps.cache-boost.outputs.cache-hit != 'true'
+        uses: actions/cache/save@v4
+        with:
+          path: ${{ env.BOOST_ROOT }}
+          key: windows-2022-boost-${{ env.boost_version }}-msvc143-static-v1
 
       - name: Build and package WubiPinyin
         shell: pwsh
