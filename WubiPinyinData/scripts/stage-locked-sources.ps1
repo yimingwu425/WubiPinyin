@@ -17,9 +17,22 @@ function Assert-RelativePath([string]$Path) {
     }
 }
 
+function Get-Sha256([string]$Path) {
+    $stream = [System.IO.File]::OpenRead($Path)
+    $algorithm = [System.Security.Cryptography.SHA256]::Create()
+    try {
+        $hash = [System.BitConverter]::ToString($algorithm.ComputeHash($stream))
+        return $hash.Replace("-", "").ToLowerInvariant()
+    }
+    finally {
+        $algorithm.Dispose()
+        $stream.Dispose()
+    }
+}
+
 function Get-VerifiedFile([string]$Uri, [string]$Destination, [string]$ExpectedHash) {
     if (Test-Path -LiteralPath $Destination) {
-        $existingHash = (Get-FileHash -Algorithm SHA256 -LiteralPath $Destination).Hash.ToLowerInvariant()
+        $existingHash = Get-Sha256 $Destination
         if ($existingHash -eq $ExpectedHash.ToLowerInvariant()) {
             return
         }
@@ -29,7 +42,7 @@ function Get-VerifiedFile([string]$Uri, [string]$Destination, [string]$ExpectedH
     Remove-Item -LiteralPath $temporary -Force -ErrorAction SilentlyContinue
     try {
         Invoke-WebRequest -Uri $Uri -OutFile $temporary -UseBasicParsing
-        $actualHash = (Get-FileHash -Algorithm SHA256 -LiteralPath $temporary).Hash.ToLowerInvariant()
+        $actualHash = Get-Sha256 $temporary
         if ($actualHash -ne $ExpectedHash.ToLowerInvariant()) {
             throw "SHA-256 mismatch for $Uri. Expected $ExpectedHash, got $actualHash."
         }
