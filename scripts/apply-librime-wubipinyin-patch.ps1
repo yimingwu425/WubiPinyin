@@ -22,12 +22,16 @@ if ($LASTEXITCODE -ne 0 -or $revision -ne $ExpectedRevision) {
     throw "librime must be pinned to $ExpectedRevision before applying the WubiPinyin patch."
 }
 
-# A reverse check makes local development idempotent while a clean CI checkout
-# proceeds to the forward application below.
-& git -C $LibrimeRoot apply --unidiff-zero --reverse --check --whitespace=error $PatchPath 2>$null
-if ($LASTEXITCODE -eq 0) {
-    Write-Host "WubiPinyin librime patch is already applied."
-    exit 0
+# The patch adds this file. Avoid a deliberately failing reverse apply on a
+# clean checkout because PowerShell treats native stderr as a terminating error.
+$HybridFilterPath = Join-Path $LibrimeRoot "src\rime\gear\hybrid_filter.cc"
+if (Test-Path -LiteralPath $HybridFilterPath) {
+    & git -C $LibrimeRoot apply --unidiff-zero --reverse --check --whitespace=error $PatchPath
+    if ($LASTEXITCODE -eq 0) {
+        Write-Host "WubiPinyin librime patch is already applied."
+        exit 0
+    }
+    throw "librime contains an unrecognized HybridFilter change."
 }
 
 $status = & git -C $LibrimeRoot status --porcelain
