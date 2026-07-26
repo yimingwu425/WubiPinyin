@@ -15,9 +15,3 @@ struct App : AppT<App> {
 };
 
 }  // namespace winrt::WubiPinyinSettings::implementation
-
-namespace winrt::WubiPinyinSettings::factory_implementation {
-
-struct App : AppT<App, implementation::App> {};
-
-}  // namespace winrt::WubiPinyinSettings::factory_implementation

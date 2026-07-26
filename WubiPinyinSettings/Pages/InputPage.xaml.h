@@ -1,6 +1,6 @@
 #pragma once
 
-#include "Pages/InputPage.xaml.g.h"
+#include "InputPage.g.h"
 #include <winrt/Microsoft.UI.Xaml.Controls.h>
 
 namespace winrt::WubiPinyinSettings::implementation {

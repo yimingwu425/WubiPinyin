@@ -86,7 +86,7 @@
       <TreatWarningAsError>true</TreatWarningAsError>
       <PrecompiledHeader>NotUsing</PrecompiledHeader>
       <PreprocessorDefinitions>UNICODE;_UNICODE;WIN32_LEAN_AND_MEAN;NOMINMAX;DISABLE_XAML_GENERATED_MAIN;%(PreprocessorDefinitions)</PreprocessorDefinitions>
-      <AdditionalIncludeDirectories>$(GeneratedFilesDir);$(MSBuildThisFileDirectory)..\include;$(MSBuildThisFileDirectory)..\WubiPinyinCore;$(BOOST_ROOT);%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>$(GeneratedFilesDir);$(GeneratedFilesDir)Pages;$(MSBuildThisFileDirectory)..\include;$(MSBuildThisFileDirectory)..\WubiPinyinCore;$(BOOST_ROOT);%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
       <ForcedIncludeFiles>$(MSBuildThisFileDirectory)WinUIProjectIncludes.h;%(ForcedIncludeFiles)</ForcedIncludeFiles>
     </ClCompile>
     <Link>

@@ -1,6 +1,6 @@
 #pragma once
 
-#include "Pages/AppearancePage.xaml.g.h"
+#include "AppearancePage.g.h"
 #include <winrt/Microsoft.UI.Xaml.Controls.h>
 #include <winrt/Microsoft.UI.Xaml.Controls.Primitives.h>
 

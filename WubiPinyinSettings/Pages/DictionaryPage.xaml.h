@@ -1,6 +1,6 @@
 #pragma once
 
-#include "Pages/DictionaryPage.xaml.g.h"
+#include "DictionaryPage.g.h"
 #include "WubiPinyinCore.h"
 #include <optional>
 #include <vector>

@@ -1,6 +1,6 @@
 #pragma once
 
-#include "Pages/LearningPage.xaml.g.h"
+#include "LearningPage.g.h"
 #include <winrt/Microsoft.UI.Xaml.Controls.h>
 #include <winrt/Microsoft.UI.Xaml.Controls.Primitives.h>
 
