@@ -7,5 +7,5 @@ if errorlevel 1 (
   exit /b 1
 )
 
-msbuild "%~dp0WubiPinyinSettings.vcxproj" "/t:Restore;Build" /p:Configuration=Release /p:Platform=x64
+msbuild "%~dp0WubiPinyinSettings.vcxproj" /restore /t:Build /p:Configuration=Release /p:Platform=x64
 exit /b %errorlevel%

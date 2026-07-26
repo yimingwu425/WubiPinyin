@@ -71,7 +71,7 @@ This macOS workspace cannot compile or run Windows App SDK/XAML output. The
 required Windows check is:
 
 ```bat
-msbuild WubiPinyinSettings\WubiPinyinSettings.vcxproj /t:Restore,Build /p:Configuration=Release /p:Platform=x64
+msbuild WubiPinyinSettings\WubiPinyinSettings.vcxproj /restore /t:Build /p:Configuration=Release /p:Platform=x64
 ```
 
 Then launch the generated executable with the Broker running and verify the
