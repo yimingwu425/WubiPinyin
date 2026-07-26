@@ -1,3 +1,17 @@
+diff --git a/CMakeLists.txt b/CMakeLists.txt
+index 8c625c2e..1b127243 100644
+--- a/CMakeLists.txt
++++ b/CMakeLists.txt
+@@ -278,4 +277,0 @@ if(BUILD_SHARED_LIBS)
+-  if(BUILD_TEST)
+-    add_subdirectory(test)
+-  endif()
+-
+@@ -285,0 +282,4 @@ endif()
++
++if(BUILD_TEST)
++  add_subdirectory(test)
++endif()
 diff --git a/src/rime/gear/gears_module.cc b/src/rime/gear/gears_module.cc
 index 59679b07..e9f11252 100644
 --- a/src/rime/gear/gears_module.cc

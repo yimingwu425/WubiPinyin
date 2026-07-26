@@ -331,12 +331,18 @@ rem %3 : target_path of rime.dll, base %WEASEL_ROOT% or abs path
 
   if "%1" == "x64" if %verify_hybrid_filter% == 1 (
     set "GTEST_FILTER=HybridFilterTest.RegistersAsAFilterComponent"
-    call build.bat test %rime_build_variant%
+    set "build_dir=build_hybrid_filter_test"
+    set "rime_install_prefix=%WEASEL_ROOT%\librime\dist_hybrid_filter_test"
+    call build.bat static test %rime_build_variant%
     if errorlevel 1 (
+      set "build_dir="
+      set "rime_install_prefix="
       set "GTEST_FILTER="
       call :stash_build %1 push
       goto error
     )
+    set "build_dir="
+    set "rime_install_prefix="
     set "GTEST_FILTER="
   )
 
