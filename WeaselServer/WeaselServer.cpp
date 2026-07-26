@@ -9,7 +9,6 @@
 #include <WeaselUI.h>
 #include <RimeWithWeasel.h>
 #include <WeaselUtility.h>
-#include <winsparkle.h>
 #include <functional>
 #include <ShellScalingApi.h>
 #include <WinUser.h>
@@ -62,11 +61,6 @@ int WINAPI _tWinMain(HINSTANCE hInstance,
   hRes = _Module.Init(NULL, hInstance);
   ATLASSERT(SUCCEEDED(hRes));
 
-  if (!wcscmp(L"/userdir", lpstrCmdLine)) {
-    CreateDirectory(WeaselUserDataPath().c_str(), NULL);
-    WeaselServerApp::explore(WeaselUserDataPath());
-    return 0;
-  }
   if (!wcscmp(L"/weaseldir", lpstrCmdLine)) {
     WeaselServerApp::explore(WeaselServerApp::install_dir());
     return 0;
@@ -104,11 +98,6 @@ int WINAPI _tWinMain(HINSTANCE hInstance,
         return 0;
     } else if (quit)
       return 0;
-  }
-
-  bool check_updates = !wcscmp(L"/update", lpstrCmdLine);
-  if (check_updates) {
-    WeaselServerApp::check_update();
   }
 
   CreateDirectory(WeaselUserDataPath().c_str(), NULL);

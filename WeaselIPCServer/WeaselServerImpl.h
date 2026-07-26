@@ -28,6 +28,7 @@ class ServerImpl : public CWindowImpl<ServerImpl, CWindow, ServerWinTraits>
   MESSAGE_HANDLER(WM_DWMCOLORIZATIONCOLORCHANGED, OnColorChange)
   MESSAGE_HANDLER(WM_SETTINGCHANGE, OnColorChange)
   MESSAGE_HANDLER(WM_COMMAND, OnCommand)
+  MESSAGE_HANDLER(WEASEL_IPC_SERVER_TASK_MESSAGE, OnServerTask)
   END_MSG_MAP()
 
   LRESULT OnColorChange(UINT uMsg,
@@ -46,6 +47,10 @@ class ServerImpl : public CWindowImpl<ServerImpl, CWindow, ServerWinTraits>
                              LPARAM lParam,
                              BOOL& bHandled);
   LRESULT OnCommand(UINT uMsg, WPARAM wParam, LPARAM lParam, BOOL& bHandled);
+  LRESULT OnServerTask(UINT uMsg,
+                       WPARAM wParam,
+                       LPARAM lParam,
+                       BOOL& bHandled);
   DWORD OnCommand(WEASEL_IPC_COMMAND uMsg, DWORD wParam, DWORD lParam);
   DWORD OnEcho(WEASEL_IPC_COMMAND uMsg, DWORD wParam, DWORD lParam);
   DWORD OnStartSession(WEASEL_IPC_COMMAND uMsg, DWORD wParam, DWORD lParam);
@@ -78,6 +83,7 @@ class ServerImpl : public CWindowImpl<ServerImpl, CWindow, ServerWinTraits>
   HWND Start();
   int Stop();
   int Run();
+  bool RunOnServerThread(std::function<void()> task, DWORD timeout_ms);
 
   void SetRequestHandler(RequestHandler* pHandler) {
     m_pRequestHandler = pHandler;
@@ -91,13 +97,15 @@ class ServerImpl : public CWindowImpl<ServerImpl, CWindow, ServerWinTraits>
   template <typename _Resp>
   void HandlePipeMessage(PipeMessage pipe_msg, _Resp resp);
 
+  // Security attributes must outlive the pipe server that uses them.
+  SecurityAttribute sa;
   std::unique_ptr<PipeServer> channel;
   std::unique_ptr<boost::thread> pipeThread;
   RequestHandler* m_pRequestHandler;  // reference
   std::map<UINT, CommandHandler> m_MenuHandlers;
   HMODULE m_hUser32Module;
-  SecurityAttribute sa;
   BOOL m_darkMode;
+  DWORD m_server_thread_id;
 };
 
 }  // namespace weasel

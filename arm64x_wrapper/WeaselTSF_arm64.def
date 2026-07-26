@@ -1,5 +1,5 @@
 EXPORTS
-	DllGetClassObject = weaselARM64.dll.DllGetClassObject
-	DllCanUnloadNow = weaselARM64.dll.DllCanUnloadNow
-	DllRegisterServer = weaselARM64.dll.DllRegisterServer
-	DllUnregisterServer = weaselARM64.dll.DllUnregisterServer
+	DllGetClassObject = WubiPinyinARM64.dll.DllGetClassObject
+	DllCanUnloadNow = WubiPinyinARM64.dll.DllCanUnloadNow
+	DllRegisterServer = WubiPinyinARM64.dll.DllRegisterServer
+	DllUnregisterServer = WubiPinyinARM64.dll.DllUnregisterServer

@@ -1,0 +1,16 @@
+# Rime dictionary: broker-managed Pinyin user entries
+# encoding: utf-8
+#
+# The Broker writes this file in a staging location and atomically replaces the
+# deployed copy.  Disabled SQLite rows are omitted rather than retained at a
+# lower weight.
+
+---
+name: hybrid_auto_pinyin_user
+version: "0.1"
+sort: by_weight
+columns:
+  - text
+  - code
+  - weight
+...

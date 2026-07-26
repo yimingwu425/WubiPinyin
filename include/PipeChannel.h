@@ -30,12 +30,12 @@ class PipeChannelBase {
   /* Connect pipe as client */
   HANDLE _Connect(const wchar_t* name);
   /* To reconnect message pipe */
-  void _Reconnect();
+  bool _Reconnect();
   /* Try to connect for one time */
   HANDLE _TryConnect();
-  size_t _WritePipe(HANDLE p, size_t s, char* b);
+  size_t _WritePipe(HANDLE& p, size_t s, char* b);
   void _FinalizePipe(HANDLE& p);
-  void _Receive(HANDLE pipe, LPVOID msg, size_t rec_len);
+  void _Receive(HANDLE& pipe, LPVOID msg, size_t rec_len);
   /* Try to get a connection from client */
   HANDLE _ConnectServerPipe(std::wstring& pn);
   inline bool _Invalid(HANDLE p) const { return p == INVALID_HANDLE_VALUE; }
@@ -61,6 +61,10 @@ class PipeChannelBase {
   const size_t buff_size;
   // Thread-local context for buffer and state
   mutable boost::thread_specific_ptr<ChannelContext> context;
+
+  // The legacy server pipe stays synchronous. Only TSF's client-side handle
+  // is opened for overlapped I/O, where a broker failure must fail-open.
+  const bool use_overlapped_io;
 
  private:
   /* Security attributes */
@@ -118,7 +122,9 @@ class PipeChannel : public PipeChannelBase {
   }
 
   _TyRes Transact(Msg& msg) {
-    _Ensure();
+    if (!_Ensure()) {
+      throw ERROR_PIPE_NOT_CONNECTED;
+    }
     HANDLE* phandle = _GetPipeHandle();
     _Send(*phandle, msg);
     return _ReceiveResponse();
@@ -148,7 +154,7 @@ class PipeChannel : public PipeChannelBase {
   }
 
  protected:
-  void _Send(HANDLE pipe, Msg& msg) {
+  void _Send(HANDLE& pipe, Msg& msg) {
     auto ctx = _GetContext();
     char* pbuff = ctx->buffer.get();
     DWORD lwritten = 0;
@@ -168,16 +174,30 @@ class PipeChannel : public PipeChannelBase {
     try {
       _WritePipe(pipe, data_sz, pbuff);
     } catch (...) {
-      _Reconnect();
-      _WritePipe(pipe, data_sz, pbuff);
+      HANDLE* phandle = _GetPipeHandle();
+      if (*phandle == pipe) {
+        _FinalizePipe(*phandle);
+      }
+      ClearBufferStream();
+      throw;
     }
     ClearBufferStream();
+  }
+
+  void _Send(const HANDLE& pipe, Msg& msg) {
+    HANDLE local_pipe = pipe;
+    _Send(local_pipe, msg);
   }
 
   _TyRes _ReceiveResponse() {
     HANDLE* phandle = _GetPipeHandle();
     _TyRes result;
-    _Receive(*phandle, &result, sizeof(result));
+    try {
+      _Receive(*phandle, &result, sizeof(result));
+    } catch (...) {
+      _FinalizePipe(*phandle);
+      throw;
+    }
     return result;
   }
 

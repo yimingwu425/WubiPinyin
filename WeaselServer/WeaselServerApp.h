@@ -5,13 +5,16 @@
 #include <WeaselIPC.h>
 #include <WeaselUI.h>
 #include <RimeWithWeasel.h>
+#include <WeaselConstants.h>
 #include <WeaselUtility.h>
+#include "../WubiPinyinCore/WubiPinyinCore.h"
+#include "../WubiPinyinCore/WubiPinyinControlPayload.h"
 #include <filesystem>
 #include <functional>
 #include <memory>
-#include <winsparkle.h>
 
 #include "WeaselTrayIcon.h"
+#include "BrokerControlServer.h"
 
 namespace fs = std::filesystem;
 
@@ -33,22 +36,6 @@ class WeaselServerApp {
                                     SW_SHOWNORMAL) > 32;
   }
 
-  static bool check_update() {
-    // when checked manually, show testing versions too
-    std::string feed_url = GetCustomResource("ManualUpdateFeedURL", "APPCAST");
-    std::wstring channel{};
-    auto ret = RegGetStringValue(HKEY_CURRENT_USER, L"Software\\Rime\\Weasel",
-                                 L"UpdateChannel", channel);
-    if (!ret && channel == L"testing") {
-      feed_url = GetCustomResource("TestingManualUpdateFeedURL", "APPCAST");
-    }
-    if (!feed_url.empty()) {
-      win_sparkle_set_appcast_url(feed_url.c_str());
-    }
-    win_sparkle_check_update_with_ui();
-    return true;
-  }
-
   static fs::path install_dir() {
     WCHAR exe_path[MAX_PATH] = {0};
     GetModuleFileNameW(GetModuleHandle(NULL), exe_path, _countof(exe_path));
@@ -62,9 +49,25 @@ class WeaselServerApp {
 
  protected:
   void SetupMenuHandlers();
+  void InitializeSettingsStore();
+  void StartControlServer();
+  void StopControlServer();
+  bool ApplySettings(const wubipinyin::SettingsSnapshot& settings,
+                     std::string* error);
+  bool SetRoute(std::uint64_t session_id,
+                wubipinyin::HybridRoute route,
+                std::string* error);
+  bool CommitRaw(std::uint64_t session_id, std::string* error);
+  bool ReloadDictionaries(std::string* error);
+  bool ResetLearning(std::string* error);
+  bool RunControlOperation(std::function<bool()> operation,
+                           std::string* error);
 
   weasel::Server m_server;
   weasel::UI m_ui;
   WeaselTrayIcon tray_icon;
   std::unique_ptr<RimeWithWeaselHandler> m_handler;
+  wubipinyin::SettingsStore m_settings_store;
+  std::unique_ptr<wubipinyin::BrokerControlDispatcher> m_control_dispatcher;
+  std::unique_ptr<BrokerControlServer> m_control_server;
 };

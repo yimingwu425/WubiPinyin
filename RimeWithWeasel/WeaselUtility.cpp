@@ -5,22 +5,11 @@
 
 fs::path WeaselUserDataPath() {
   WCHAR _path[MAX_PATH] = {0};
-  const WCHAR KEY[] = L"Software\\Rime\\Weasel";
-  HKEY hKey;
-  LSTATUS ret = RegOpenKey(HKEY_CURRENT_USER, KEY, &hKey);
-  if (ret == ERROR_SUCCESS) {
-    DWORD len = sizeof(_path);
-    DWORD type = 0;
-    DWORD data = 0;
-    ret =
-        RegQueryValueEx(hKey, L"RimeUserDir", NULL, &type, (LPBYTE)_path, &len);
-    RegCloseKey(hKey);
-    if (ret == ERROR_SUCCESS && type == REG_SZ && _path[0]) {
-      return fs::path(_path);
-    }
-  }
-  // default location
-  ExpandEnvironmentStringsW(L"%AppData%\\Rime", _path, _countof(_path));
+  // Keep settings and learning in one fixed, product-owned location. Do not
+  // accept a user-writable registry path in a process the installer can launch
+  // elevated.
+  ExpandEnvironmentStringsW(L"%AppData%\\WubiPinyin", _path,
+                            _countof(_path));
   return fs::path(_path);
 }
 

@@ -1,0 +1,8 @@
+namespace WubiPinyinSettings
+{
+    [default_interface]
+    runtimeclass DictionaryPage : Microsoft.UI.Xaml.Controls.Page
+    {
+        DictionaryPage();
+    }
+}

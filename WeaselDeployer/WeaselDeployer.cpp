@@ -40,7 +40,8 @@ int APIENTRY _tWinMain(HINSTANCE hInstance,
   CreateDirectory(WeaselUserDataPath().c_str(), NULL);
 
   int ret = 0;
-  HANDLE hMutex = CreateMutex(NULL, TRUE, L"WeaselDeployerExclusiveMutex");
+  HANDLE hMutex =
+      CreateMutex(NULL, TRUE, WUBIPINYIN_DEPLOYER_EXCLUSIVE_MUTEX);
   if (!hMutex) {
     ret = 1;
   } else if (GetLastError() == ERROR_ALREADY_EXISTS) {
@@ -66,15 +67,14 @@ static int Run(LPTSTR lpCmdLine) {
     WCHAR msg[1024] = {0};
     if (LoadString(GetModuleHandle(NULL), IDS_STR_HELP, msg,
                    sizeof(msg) / sizeof(TCHAR))) {
-      MessageBox(NULL, msg, L"Weasel Deployer", MB_ICONINFORMATION | MB_OK);
+      MessageBox(NULL, msg, WUBIPINYIN_PRODUCT_NAME,
+                 MB_ICONINFORMATION | MB_OK);
     } else {
       MessageBox(NULL,
-                 L"Usage: WeaselDeployer.exe [options]\n"
+                 L"Usage: WubiPinyinDeployer.exe [options]\n"
                  L"/? or /help		- Show this help message\n"
                  L"/deploy		- Update Workspace\n"
-                 L"/dict		- Manage dictionary\n"
-                 L"/sync		- Sync user data\n"
-                 L"/install		- Install Weasel (Initial deployment)",
+                 L"/install		- Perform initial deployment",
                  L"Weasel Deployer", MB_ICONINFORMATION | MB_OK);
     }
     return 0;
@@ -85,16 +85,5 @@ static int Run(LPTSTR lpCmdLine) {
     return configurator.UpdateWorkspace();
   }
 
-  bool dict_management = !wcscmp(L"/dict", lpCmdLine);
-  if (dict_management) {
-    return configurator.DictManagement();
-  }
-
-  bool sync_user_dict = !wcscmp(L"/sync", lpCmdLine);
-  if (sync_user_dict) {
-    return configurator.SyncUserData();
-  }
-
-  bool installing = !wcscmp(L"/install", lpCmdLine);
-  return configurator.Run(installing);
+  return configurator.UpdateWorkspace();
 }

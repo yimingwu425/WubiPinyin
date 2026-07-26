@@ -8,34 +8,29 @@
 #include <WeaselUtility.h>
 #include "InstallOptionsDlg.h"
 
-// {A3F4CDED-B1E9-41EE-9CA6-7B4D0DE6CB0A}
+// {E90B69E8-6717-419D-A69E-805DC4ADCED1}
 static const GUID c_clsidTextService = {
-    0xa3f4cded,
-    0xb1e9,
-    0x41ee,
-    {0x9c, 0xa6, 0x7b, 0x4d, 0xd, 0xe6, 0xcb, 0xa}};
+    0xe90b69e8,
+    0x6717,
+    0x419d,
+    {0xa6, 0x9e, 0x80, 0x5d, 0xc4, 0xad, 0xce, 0xd1}};
 
-// {3D02CAB6-2B8E-4781-BA20-1C9267529467}
+// {67B2D4E5-ED9F-45B4-A86C-61AD643155B5}
 static const GUID c_guidProfile = {
-    0x3d02cab6,
-    0x2b8e,
-    0x4781,
-    {0xba, 0x20, 0x1c, 0x92, 0x67, 0x52, 0x94, 0x67}};
+    0x67b2d4e5,
+    0xed9f,
+    0x45b4,
+    {0xa8, 0x6c, 0x61, 0xad, 0x64, 0x31, 0x55, 0xb5}};
 
-// if in the future, option hant is extended, maybe a function to generate this
-// info is required
 #define PSZTITLE_HANS                                                     \
-  L"0804:{A3F4CDED-B1E9-41EE-9CA6-7B4D0DE6CB0A}{3D02CAB6-2B8E-4781-BA20-" \
-  L"1C9267529467}"
-#define PSZTITLE_HANT                                                     \
-  L"0404:{A3F4CDED-B1E9-41EE-9CA6-7B4D0DE6CB0A}{3D02CAB6-2B8E-4781-BA20-" \
-  L"1C9267529467}"
+  L"0804:{E90B69E8-6717-419D-A69E-805DC4ADCED1}{67B2D4E5-ED9F-45B4-A86C-" \
+  L"61AD643155B5}"
 #define ILOT_UNINSTALL 0x00000001
 typedef HRESULT(WINAPI* PTF_INSTALLLAYOUTORTIP)(LPCWSTR psz, DWORD dwFlags);
 
-#define WEASEL_WER_KEY                            \
+#define WUBIPINYIN_WER_KEY                        \
   L"SOFTWARE\\Microsoft\\Windows\\Windows Error " \
-  L"Reporting\\LocalDumps\\WeaselServer.exe"
+  L"Reporting\\LocalDumps\\WubiPinyinServer.exe"
 
 BOOL copy_file(const std::wstring& src, const std::wstring& dest) {
   BOOL ret = CopyFile(src.c_str(), dest.c_str(), FALSE);
@@ -126,7 +121,7 @@ int install_ime_file(std::wstring& srcPath,
   WCHAR path[MAX_PATH];
   GetModuleFileNameW(GetModuleHandle(NULL), path, _countof(path));
 
-  std::wstring srcFileName = L"weasel";
+  std::wstring srcFileName = L"WubiPinyin";
 
   srcFileName += ext;
   WCHAR drive[_MAX_DRIVE];
@@ -136,7 +131,7 @@ int install_ime_file(std::wstring& srcPath,
   srcPath = std::wstring(drive) + dir + srcFileName;
 
   GetSystemDirectoryW(path, _countof(path));
-  std::wstring destPath = std::wstring(path) + L"\\weasel" + ext;
+  std::wstring destPath = std::wstring(path) + L"\\WubiPinyin" + ext;
 
   int retval = 0;
   // 复制 .dll/.ime 到系统目录
@@ -168,7 +163,8 @@ int install_ime_file(std::wstring& srcPath,
         std::wstring srcPathARM32 = srcPath;
         ireplace_last(srcPathARM32, ext, L"ARM" + ext);
 
-        std::wstring destPathARM32 = std::wstring(sysarm32) + L"\\weasel" + ext;
+        std::wstring destPathARM32 =
+            std::wstring(sysarm32) + L"\\WubiPinyin" + ext;
         if (!copy_file(srcPathARM32, destPathARM32)) {
           MSG_NOT_SILENT_ID_CAP(silent, destPathARM32.c_str(),
                                 IDS_STR_INSTALL_FAILED, MB_ICONERROR | MB_OK);
@@ -177,11 +173,8 @@ int install_ime_file(std::wstring& srcPath,
         retval += func(destPathARM32, true, true, true, hant, silent);
       }
 
-      // Then install the ARM64 (and x64) version.
-      // On ARM64 weasel.dll(ime) is an ARM64X redirection DLL (weaselARM64X).
-      // When loaded, it will be redirected to weaselARM64.dll(ime) on ARM64
-      // processes, and weaselx64.dll(ime) on x64 processes. So we need a total
-      // of three files.
+      // Then install the ARM64 (and x64) version. On ARM64 the base DLL is
+      // an ARM64X redirection DLL, so all three files are required.
 
       std::wstring srcPathX64 = srcPath;
       std::wstring destPathX64 = destPath;
@@ -203,9 +196,7 @@ int install_ime_file(std::wstring& srcPath,
         return 1;
       }
 
-      // Since weaselARM64X is just a redirector we don't have separate
-      // HANS and HANT variants.
-      srcPath = std::wstring(drive) + dir + L"weaselARM64X" + ext;
+      srcPath = std::wstring(drive) + dir + L"WubiPinyinARM64X" + ext;
     } else {
       ireplace_last(srcPath, ext, L"x64" + ext);
     }
@@ -232,7 +223,7 @@ int uninstall_ime_file(const std::wstring& ext,
   WCHAR path[MAX_PATH];
   GetSystemDirectoryW(path, _countof(path));
   std::wstring imePath(path);
-  imePath += L"\\weasel" + ext;
+  imePath += L"\\WubiPinyin" + ext;
   retval += func(imePath, false, false, false, false, silent);
   delete_file(imePath);
   if (is_wow64()) {
@@ -247,7 +238,8 @@ int uninstall_ime_file(const std::wstring& ext,
     if (is_arm64_machine()) {
       WCHAR sysarm32[MAX_PATH];
       if (get_wow_arm32_system_dir(sysarm32, _countof(sysarm32)) > 0) {
-        std::wstring imePathARM32 = std::wstring(sysarm32) + L"\\weasel" + ext;
+        std::wstring imePathARM32 =
+            std::wstring(sysarm32) + L"\\WubiPinyin" + ext;
         retval += func(imePathARM32, false, true, true, false, silent);
         delete_file(imePathARM32);
       }
@@ -274,7 +266,7 @@ int uninstall_ime_file(const std::wstring& ext,
 // 注册IME输入法
 // `register_ime` (IMM/.ime) support removed — TSF-only build
 
-void enable_profile(BOOL fEnable, bool hant) {
+void enable_profile(BOOL fEnable) {
   HRESULT hr;
   ITfInputProcessorProfiles* pProfiles = NULL;
 
@@ -283,7 +275,7 @@ void enable_profile(BOOL fEnable, bool hant) {
                         (LPVOID*)&pProfiles);
 
   if (SUCCEEDED(hr)) {
-    LANGID lang_id = hant ? 0x0404 : 0x0804;
+    constexpr LANGID lang_id = 0x0804;
     if (fEnable) {
       pProfiles->EnableLanguageProfile(c_clsidTextService, lang_id,
                                        c_guidProfile, fEnable);
@@ -308,7 +300,7 @@ int register_text_service(const std::wstring& tsf_path,
   using RegisterServerFunction = HRESULT(STDAPICALLTYPE*)();
 
   if (!register_ime)
-    enable_profile(FALSE, hant);
+    enable_profile(FALSE);
 
   std::wstring params = L" \"" + tsf_path + L"\"";
   if (!register_ime) {
@@ -317,8 +309,7 @@ int register_text_service(const std::wstring& tsf_path,
   // if (silent)  // always silent
   { params = L" /s " + params; }
 
-  if (!SetEnvironmentVariable(L"TEXTSERVICE_PROFILE",
-                              hant ? L"hant" : L"hans")) {
+  if (!SetEnvironmentVariable(L"TEXTSERVICE_PROFILE", L"hans")) {
     throw std::runtime_error("SetEnvironmentVariable failed");
   }
 
@@ -354,16 +345,16 @@ int register_text_service(const std::wstring& tsf_path,
   }
 
   if (register_ime)
-    enable_profile(TRUE, hant);
+    enable_profile(TRUE);
 
   return 0;
 }
 
-int install(bool hant, bool silent) {
+int install(bool /*hant*/, bool silent) {
   std::wstring ime_src_path;
   int retval = 0;
 
-  retval += install_ime_file(ime_src_path, L".dll", hant, silent,
+  retval += install_ime_file(ime_src_path, L".dll", false, silent,
                              &register_text_service);
 
   // 写注册表
@@ -373,15 +364,15 @@ int install(bool hant, bool silent) {
                 _countof(dir), NULL, 0, NULL, 0);
   std::wstring rootDir = std::wstring(drive) + dir;
   rootDir.pop_back();
-  auto ret = SetRegKeyValue(HKEY_LOCAL_MACHINE, WEASEL_REG_KEY, L"WeaselRoot",
-                            rootDir.c_str(), REG_SZ);
+  auto ret = SetRegKeyValue(HKEY_LOCAL_MACHINE, WEASEL_REG_KEY,
+                            WUBIPINYIN_ROOT_VALUE, rootDir.c_str(), REG_SZ);
   if (FAILED(HRESULT_FROM_WIN32(ret))) {
     MSG_NOT_SILENT_BY_IDS(silent, IDS_STR_ERRWRITEWEASELROOT,
                           IDS_STR_INSTALL_FAILED, MB_ICONERROR | MB_OK);
     return 1;
   }
 
-  const std::wstring executable = L"WeaselServer.exe";
+  const std::wstring executable = WUBIPINYIN_SERVER_EXECUTABLE;
   ret = SetRegKeyValue(HKEY_LOCAL_MACHINE, WEASEL_REG_KEY, L"ServerExecutable",
                        executable.c_str(), REG_SZ);
   if (FAILED(HRESULT_FROM_WIN32(ret))) {
@@ -400,10 +391,7 @@ int install(bool hant, bool silent) {
     pfnInstallLayoutOrTip =
         (PTF_INSTALLLAYOUTORTIP)GetProcAddress(hInputDLL, "InstallLayoutOrTip");
     if (pfnInstallLayoutOrTip) {
-      if (hant)
-        (*pfnInstallLayoutOrTip)(PSZTITLE_HANT, 0);
-      else
-        (*pfnInstallLayoutOrTip)(PSZTITLE_HANS, 0);
+      (*pfnInstallLayoutOrTip)(PSZTITLE_HANS, 0);
     }
     FreeLibrary(hInputDLL);
   }
@@ -411,16 +399,16 @@ int install(bool hant, bool silent) {
   // https://learn.microsoft.com/zh-cn/windows/win32/wer/collecting-user-mode-dumps
   const std::wstring dmpPathW = WeaselLogPath().wstring();
   // DumpFolder
-  SetRegKeyValue(HKEY_LOCAL_MACHINE, WEASEL_WER_KEY, L"DumpFolder",
+  SetRegKeyValue(HKEY_LOCAL_MACHINE, WUBIPINYIN_WER_KEY, L"DumpFolder",
                  dmpPathW.c_str(), REG_SZ, true);
   // dump type 0
-  SetRegKeyValue(HKEY_LOCAL_MACHINE, WEASEL_WER_KEY, L"DumpType", 0, REG_DWORD,
-                 true);
-  // CustomDumpFlags, MiniDumpNormal
-  SetRegKeyValue(HKEY_LOCAL_MACHINE, WEASEL_WER_KEY, L"CustomDumpFlags", 0,
+  SetRegKeyValue(HKEY_LOCAL_MACHINE, WUBIPINYIN_WER_KEY, L"DumpType", 0,
                  REG_DWORD, true);
+  // CustomDumpFlags, MiniDumpNormal
+  SetRegKeyValue(HKEY_LOCAL_MACHINE, WUBIPINYIN_WER_KEY,
+                 L"CustomDumpFlags", 0, REG_DWORD, true);
   // maximium dump count 10
-  SetRegKeyValue(HKEY_LOCAL_MACHINE, WEASEL_WER_KEY, L"DumpCount", 10,
+  SetRegKeyValue(HKEY_LOCAL_MACHINE, WUBIPINYIN_WER_KEY, L"DumpCount", 10,
                  REG_DWORD, true);
 
   if (retval)
@@ -436,30 +424,21 @@ int uninstall(bool silent) {
   // 注销输入法
   int retval = 0;
 
-  const WCHAR KEY[] = L"Software\\Rime\\Weasel";
+  const WCHAR* KEY = WEASEL_REG_KEY;
   HKEY hKey;
   LSTATUS ret = RegOpenKey(HKEY_CURRENT_USER, KEY, &hKey);
   if (ret == ERROR_SUCCESS) {
-    DWORD type = 0;
-    DWORD data = 0;
-    DWORD len = sizeof(data);
-    ret = RegQueryValueEx(hKey, L"Hant", NULL, &type, (LPBYTE)&data, &len);
-    if (ret == ERROR_SUCCESS && type == REG_DWORD) {
-      HMODULE hInputDLL = LoadLibrary(TEXT("input.dll"));
-      if (hInputDLL) {
-        PTF_INSTALLLAYOUTORTIP pfnInstallLayoutOrTip;
-        pfnInstallLayoutOrTip = (PTF_INSTALLLAYOUTORTIP)GetProcAddress(
-            hInputDLL, "InstallLayoutOrTip");
-        if (pfnInstallLayoutOrTip) {
-          if (data != 0)
-            (*pfnInstallLayoutOrTip)(PSZTITLE_HANT, ILOT_UNINSTALL);
-          else
-            (*pfnInstallLayoutOrTip)(PSZTITLE_HANS, ILOT_UNINSTALL);
-        }
-        FreeLibrary(hInputDLL);
-      }
-    }
     RegCloseKey(hKey);
+  }
+
+  HMODULE hInputDLL = LoadLibrary(TEXT("input.dll"));
+  if (hInputDLL) {
+    PTF_INSTALLLAYOUTORTIP pfnInstallLayoutOrTip =
+        (PTF_INSTALLLAYOUTORTIP)GetProcAddress(hInputDLL,
+                                               "InstallLayoutOrTip");
+    if (pfnInstallLayoutOrTip)
+      (*pfnInstallLayoutOrTip)(PSZTITLE_HANS, ILOT_UNINSTALL);
+    FreeLibrary(hInputDLL);
   }
 
   // IMM/.ime support removed; only uninstall TSF/.dll
@@ -467,14 +446,13 @@ int uninstall(bool silent) {
 
   // 清除注册信息
   RegDeleteKey(HKEY_LOCAL_MACHINE, WEASEL_REG_KEY);
-  RegDeleteKey(HKEY_LOCAL_MACHINE, RIME_REG_KEY);
 
   // delete WER register,
   // "HKEY_LOCAL_MACHINE\\SOFTWARE\\Microsoft\\Windows\\Windows Error
-  // Reporting\\LocalDumps\\WeaselServer.exe" no WOW64 redirect
+  // Reporting\\LocalDumps\\WubiPinyinServer.exe" has no WOW64 redirect
 
   auto flag_wow64 = is_wow64() ? KEY_WOW64_64KEY : 0;
-  RegDeleteKeyEx(HKEY_LOCAL_MACHINE, WEASEL_WER_KEY, flag_wow64, 0);
+  RegDeleteKeyEx(HKEY_LOCAL_MACHINE, WUBIPINYIN_WER_KEY, flag_wow64, 0);
   if (retval)
     return 1;
 
@@ -488,7 +466,8 @@ bool has_installed() {
   WCHAR path[MAX_PATH];
   GetSystemDirectory(path, _countof(path));
   std::wstring sysPath(path);
-  DWORD attr = GetFileAttributesW((sysPath + L"\\weasel.dll").c_str());
+  DWORD attr = GetFileAttributesW(
+      (sysPath + L"\\" + WUBIPINYIN_TSF_FILE_NAME).c_str());
   return (attr != INVALID_FILE_ATTRIBUTES &&
           !(attr & FILE_ATTRIBUTE_DIRECTORY));
 }

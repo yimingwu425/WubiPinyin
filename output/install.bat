@@ -1,57 +1,50 @@
 @echo off
+setlocal
 
-rem argument 1: [ /s | /t ] register ime as zh_CN | zh_TW keyboard layout
-set install_option=/s
-if /i "%1" == "/t" set install_option=/t
+pushd "%~dp0"
 
-set CD_BACK=%CD%
-cd "%~dp0"
+cscript //nologo check_windows_version.js
+if errorlevel 1 goto unsupported
 
-if /i "%2" == "/register" goto register
+if /i "%1" == "/register" goto register
 
 echo stopping service from an older version.
 call stop_service.bat
 
 echo configuring preset input schemas...
-WeaselDeployer.exe /install
+WubiPinyinDeployer.exe /install
 
 echo administrative permissions required. detecting permissions...
 net session >nul 2>&1
 if not %errorlevel% == 0 (
   echo elevating command prompt...
-  cscript sudo.js "%~nx0" %install_option% /register
-  exit /b
+  cscript //nologo sudo.js "%~f0" /register
+  goto done
 )
 
 :register
-echo registering Weasel IME to your system.
-echo install_option=%install_option%
+echo registering WubiPinyin IME to your system.
+if not exist "%APPDATA%\WubiPinyin" mkdir "%APPDATA%\WubiPinyin"
+reg add "HKEY_CURRENT_USER\Software\Rime\WubiPinyin" /v RimeUserDir /t REG_SZ /d "%APPDATA%\WubiPinyin" /f /reg:64
+if errorlevel 1 goto error
+reg add "HKEY_CURRENT_USER\Software\Rime\WubiPinyin" /v RimeUserDir /t REG_SZ /d "%APPDATA%\WubiPinyin" /f /reg:32
+if errorlevel 1 goto error
+WubiPinyinSetup.exe /s
+if errorlevel 1 goto error
+reg add "HKEY_LOCAL_MACHINE\Software\Microsoft\Windows\CurrentVersion\Run" /v WubiPinyinServer /t REG_SZ /d "%CD%\WubiPinyinServer.exe" /f /reg:64
+if errorlevel 1 goto error
+start "" WubiPinyinServer.exe
+goto done
 
-cscript check_windows_version.js
-if errorlevel 2 goto win7_x64_install
-if errorlevel 1 goto xp_install
+:unsupported
+echo WubiPinyin requires Windows 11 x64. ARM64 and x86 are not supported.
+goto error
 
-:win7_install
-WeaselSetup.exe %install_option%
-rem regsvr32.exe /s "%CD%\weasel.dll"
-goto next
-
-:win7_x64_install
-WeaselSetupx64.exe %install_option%
-rem regsvr32.exe /s "%CD%\weasel.dll"
-rem regsvr32.exe /s "%CD%\weaselx64.dll"
-goto next
-
-:xp_install
-WeaselSetup.exe %install_option%
-goto next
-
-:next
-reg add "HKEY_LOCAL_MACHINE\Software\Microsoft\Windows\CurrentVersion\Run" /v WeaselServer /t REG_SZ /d "%CD%\WeaselServer.exe" /f
+:error
+popd
+exit /b 1
 
 :done
-start WeaselServer.exe
-
-if /i "%2" == "/register" pause
 echo installed.
-cd "%CD_BACK%"
+popd
+exit /b 0

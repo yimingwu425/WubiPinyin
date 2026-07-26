@@ -1,0 +1,6 @@
+target("TestWubiPinyinCore")
+  set_kind("binary")
+  add_files("./*.cpp")
+  add_deps("WubiPinyinCore")
+  add_includedirs("$(projectdir)/WubiPinyinCore")
+  add_rules("subcmd")

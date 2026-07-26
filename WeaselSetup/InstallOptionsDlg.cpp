@@ -27,7 +27,7 @@ LRESULT InstallOptionsDialog::OnInitDialog(UINT, WPARAM, LPARAM, BOOL&) {
   dir_.SetWindowTextW(user_dir.c_str());
 
   cn_.EnableWindow(!installed);
-  tw_.EnableWindow(!installed);
+  tw_.EnableWindow(FALSE);
   remove_.EnableWindow(installed);
   dir_.EnableWindow(user_dir.empty() ? FALSE : TRUE);
 
@@ -51,7 +51,7 @@ LRESULT InstallOptionsDialog::OnClose(UINT, WPARAM, LPARAM, BOOL&) {
 }
 
 LRESULT InstallOptionsDialog::OnOK(WORD, WORD code, HWND, BOOL&) {
-  hant = (IsDlgButtonChecked(IDC_RADIO_TW) == BST_CHECKED);
+  hant = false;
   if (IsDlgButtonChecked(IDC_RADIO_CUSTOM_DIR) == BST_CHECKED) {
     CStringW text;
     dir_.GetWindowTextW(text);
@@ -71,7 +71,7 @@ LRESULT InstallOptionsDialog::OnRemove(WORD, WORD code, HWND, BOOL&) {
   str.LoadStringW(IDS_STRING_INSTALL);
   ok_.SetWindowTextW(str);
   cn_.EnableWindow(!installed);
-  tw_.EnableWindow(!installed);
+  tw_.EnableWindow(FALSE);
   remove_.EnableWindow(installed);
   return 0;
 }

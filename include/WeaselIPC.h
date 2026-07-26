@@ -2,18 +2,22 @@
 #include <WeaselIPCData.h>
 #include <WeaselUtility.h>
 #include <windows.h>
+#include <Sddl.h>
 #include <functional>
 #include <memory>
+#include <vector>
 #include <KeyEvent.h>
 
 #define WEASEL_IPC_WINDOW L"WeaselIPCWindow_1.0"
-#define WEASEL_IPC_PIPE_NAME L"WeaselNamedPipe"
+#define WEASEL_IPC_PIPE_NAME L"WubiPinyinControl"
 
 #define WEASEL_IPC_METADATA_SIZE 1024
 #define WEASEL_IPC_BUFFER_SIZE (4 * 1024)
 #define WEASEL_IPC_BUFFER_LENGTH (WEASEL_IPC_BUFFER_SIZE / sizeof(WCHAR))
 #define WEASEL_IPC_SHARED_MEMORY_SIZE \
   (sizeof(PipeMessage) + WEASEL_IPC_BUFFER_SIZE)
+
+constexpr UINT WEASEL_IPC_SERVER_TASK_MESSAGE = WM_APP + 0x470;
 
 enum WEASEL_IPC_COMMAND {
   WEASEL_IPC_ECHO = (WM_APP + 1),
@@ -159,6 +163,12 @@ class Server {
   // 消息循环
   int Run();
 
+  // Runs a short control-plane operation on the server window thread. The
+  // caller owns any result state captured by `task`; a timeout never blocks
+  // TSF key processing.
+  bool RunOnServerThread(std::function<void()> task,
+                         DWORD timeout_ms = 1000);
+
   void SetRequestHandler(RequestHandler* pHandler);
   void AddMenuHandler(UINT uID, CommandHandler handler);
   HWND GetHWnd();
@@ -167,12 +177,67 @@ class Server {
   ServerImpl* m_pImpl;
 };
 
-inline std::wstring GetPipeName() {
-  std::wstring pipe_name;
-  pipe_name += L"\\\\.\\pipe\\";
-  pipe_name += getUsername();
+inline std::wstring GetPipeUserSid() {
+  HANDLE token = NULL;
+  if (!::OpenProcessToken(::GetCurrentProcess(), TOKEN_QUERY, &token)) {
+    return L"";
+  }
+
+  DWORD token_user_size = 0;
+  const BOOL initial_query =
+      ::GetTokenInformation(token, TokenUser, NULL, 0, &token_user_size);
+  if (initial_query || ::GetLastError() != ERROR_INSUFFICIENT_BUFFER ||
+      token_user_size == 0) {
+    ::CloseHandle(token);
+    return L"";
+  }
+
+  std::vector<BYTE> token_user(token_user_size);
+  if (!::GetTokenInformation(token, TokenUser, token_user.data(),
+                             token_user_size, &token_user_size)) {
+    ::CloseHandle(token);
+    return L"";
+  }
+  ::CloseHandle(token);
+
+  const TOKEN_USER* user =
+      reinterpret_cast<const TOKEN_USER*>(token_user.data());
+  LPWSTR sid = NULL;
+  if (!::ConvertSidToStringSidW(user->User.Sid, &sid)) {
+    return L"";
+  }
+
+  std::wstring value(sid);
+  ::LocalFree(sid);
+  return value;
+}
+
+inline std::wstring GetUserSessionPipeName(const wchar_t* channel_name) {
+  const std::wstring sid = GetPipeUserSid();
+  DWORD session_id = 0;
+  ::ProcessIdToSessionId(::GetCurrentProcessId(), &session_id);
+
+  std::wstring pipe_name = L"\\\\.\\pipe\\";
+  pipe_name += channel_name;
   pipe_name += L"\\";
-  pipe_name += WEASEL_IPC_PIPE_NAME;
+  if (!sid.empty()) {
+    pipe_name += sid;
+  } else {
+    // The normal path always uses the SID. Keep a stable per-user fallback so
+    // a token-query failure does not make the server spin on an invalid name.
+    const std::wstring username = getUsername();
+    pipe_name += username.empty() ? L"unknown" : username;
+  }
+  pipe_name += L"\\";
+  pipe_name += std::to_wstring(session_id);
   return pipe_name;
+}
+
+inline std::wstring GetPipeName() {
+  return GetUserSessionPipeName(WEASEL_IPC_PIPE_NAME);
+}
+
+inline std::wstring GetBrokerControlPipeName() {
+  return GetUserSessionPipeName(L"WubiPinyinBrokerControlV1");
 }
 }  // namespace weasel

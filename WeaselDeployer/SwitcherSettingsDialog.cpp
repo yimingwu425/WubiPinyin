@@ -113,10 +113,7 @@ LRESULT SwitcherSettingsDialog::OnClose(UINT, WPARAM, LPARAM, BOOL&) {
 LRESULT SwitcherSettingsDialog::OnGetSchemata(WORD, WORD, HWND hWndCtl, BOOL&) {
   HKEY hKey;
   std::wstring hPath;
-  if (is_wow64())
-    hPath = _T("Software\\WOW6432Node\\Rime\\Weasel");
-  else
-    hPath = _T("Software\\Rime\\Weasel");
+  hPath = is_wow64() ? WUBIPINYIN_REG_KEY_32 : WEASEL_REG_KEY;
   LSTATUS ret = RegOpenKey(HKEY_LOCAL_MACHINE, hPath.c_str(), &hKey);
   if (ret == ERROR_SUCCESS) {
     WCHAR value[MAX_PATH];
@@ -124,7 +121,8 @@ LRESULT SwitcherSettingsDialog::OnGetSchemata(WORD, WORD, HWND hWndCtl, BOOL&) {
     DWORD type = 0;
     DWORD data = 0;
     ret =
-        RegQueryValueExW(hKey, L"WeaselRoot", NULL, &type, (LPBYTE)value, &len);
+        RegQueryValueExW(hKey, WUBIPINYIN_ROOT_VALUE, NULL, &type,
+                         (LPBYTE)value, &len);
     if (ret == ERROR_SUCCESS && type == REG_SZ) {
       WCHAR parameters[MAX_PATH + 37];
       wcscpy_s<_countof(parameters)>(

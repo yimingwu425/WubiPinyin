@@ -81,7 +81,8 @@ set build_rime=0
 set rime_build_variant=release
 set build_weasel=0
 set build_installer=0
-set build_arm64=0
+set verify_hybrid_filter=0
+if /I "%VERIFY_HYBRID_FILTER%" == "1" set verify_hybrid_filter=1
 
 rem parse the command line options
 :parse_cmdline_options
@@ -104,7 +105,11 @@ rem parse the command line options
   if "%1" == "librime" set build_rime=1
   if "%1" == "weasel" set build_weasel=1
   if "%1" == "installer" set build_installer=1
-  if "%1" == "arm64" set build_arm64=1
+  if "%1" == "verify-hybrid-filter" set verify_hybrid_filter=1
+  if "%1" == "arm64" (
+    echo ARM64 builds are not part of the WubiPinyin MVP.
+    exit /b 1
+  )
   if "%1" == "all" (
     set build_boost=1
     set build_data=1
@@ -112,7 +117,6 @@ rem parse the command line options
     set build_rime=1
     set build_weasel=1
     set build_installer=1
-    set build_arm64=1
   )
   shift
   goto parse_cmdline_options
@@ -126,10 +130,13 @@ if %build_rime% == 0 (
   set build_weasel=1
 )))))
 
-rem quit WeaselServer.exe before building
+rem Product binaries must link and package the checked-in librime, including HybridFilter.
+if %build_weasel% == 1 set build_rime=1
+if %build_installer% == 1 set build_rime=1
+rem quit WubiPinyinServer.exe before building
 cd /d %WEASEL_ROOT%
-if exist output\weaselserver.exe (
-  output\weaselserver.exe /q
+if exist output\WubiPinyinServer.exe (
+  output\WubiPinyinServer.exe /q
 )
 
 rem build booost
@@ -145,6 +152,8 @@ if %build_rime% == 1 (
   if not exist librime\build.bat (
     git submodule update --init --recursive
   )
+  powershell.exe -NoProfile -ExecutionPolicy Bypass -File "%WEASEL_ROOT%\scripts\apply-librime-wubipinyin-patch.ps1" -RepositoryRoot "%WEASEL_ROOT%"
+  if errorlevel 1 goto error
   cd %WEASEL_ROOT%\librime
   rem clean cache before building
   for %%a in ( build dist lib ^
@@ -199,35 +208,13 @@ del msbuild*.log
 if defined SDKVER set build_sdk_option=/p:WindowsTargetPlatformVersion=%SDKVER%
 if not defined SDKVER set build_sdk_option=
 
-if %build_arm64% == 1 (
-
-  msbuild.exe weasel.sln %build_option% /p:Configuration=%build_config% /p:Platform="ARM" /fl6 %build_sdk_option%
-  if errorlevel 1 goto error
-  msbuild.exe weasel.sln %build_option% /p:Configuration=%build_config% /p:Platform="ARM64" /fl5 %build_sdk_option%
-  if errorlevel 1 goto error
-)
-
 msbuild.exe weasel.sln %build_option% /p:Configuration=%build_config% /p:Platform="x64" /fl2 %build_sdk_option%
 if errorlevel 1 goto error
 msbuild.exe weasel.sln %build_option% /p:Configuration=%build_config% /p:Platform="Win32" /fl1 %build_sdk_option%
 if errorlevel 1 goto error
 
-if %build_arm64% == 1 (
-  pushd arm64x_wrapper
-  call build.bat
-  if errorlevel 1 goto error
-  popd
-
-  copy arm64x_wrapper\weaselARM64X.dll output
-  if errorlevel 1 goto error
-)
-
 if %build_installer% == 1 (
-  "%ProgramFiles(x86)%"\NSIS\Bin\makensis.exe ^
-  /DWEASEL_VERSION=%WEASEL_VERSION% ^
-  /DWEASEL_BUILD=%WEASEL_BUILD% ^
-  /DPRODUCT_VERSION=%PRODUCT_VERSION% ^
-  output\install.nsi
+  call :build_installer
   if errorlevel 1 goto error
 )
 
@@ -258,16 +245,6 @@ rem build boost
     architecture=x86^
     address-model=64
   
-  set BJAM_OPTIONS_ARM32=%BJAM_OPTIONS_COMMON%^
-    define=BOOST_USE_WINAPI_VERSION=0x0A00^
-    architecture=arm^
-    address-model=32
-  
-  set BJAM_OPTIONS_ARM64=%BJAM_OPTIONS_COMMON%^
-    define=BOOST_USE_WINAPI_VERSION=0x0A00^
-    architecture=arm^
-    address-model=64
-  
   cd /d %BOOST_ROOT%
   if not exist b2.exe call bootstrap.bat
   if errorlevel 1 goto error
@@ -276,12 +253,6 @@ rem build boost
   b2 %BJAM_OPTIONS_X64% stage %BOOST_COMPILED_LIBS%
   if errorlevel 1 goto error
   
-  if %build_arm64% == 1 (
-    b2 %BJAM_OPTIONS_ARM32% stage %BOOST_COMPILED_LIBS%
-    if errorlevel 1 goto error
-    b2 %BJAM_OPTIONS_ARM64% stage %BOOST_COMPILED_LIBS%
-    if errorlevel 1 goto error
-  )
   exit /b
 
 rem ---------------------------------------------------------------------------
@@ -356,6 +327,17 @@ rem %3 : target_path of rime.dll, base %WEASEL_ROOT% or abs path
     goto error
   )
 
+  if "%1" == "x64" if %verify_hybrid_filter% == 1 (
+    set "GTEST_FILTER=HybridFilterTest.RegistersAsAFilterComponent"
+    call build.bat test %rime_build_variant%
+    if errorlevel 1 (
+      set "GTEST_FILTER="
+      call :stash_build %1 push
+      goto error
+    )
+    set "GTEST_FILTER="
+  )
+
   cd %WEASEL_ROOT%\librime
   call :stash_build %1 push
 
@@ -367,6 +349,37 @@ rem %3 : target_path of rime.dll, base %WEASEL_ROOT% or abs path
   if errorlevel 1 goto error
 
   exit /b
+rem ---------------------------------------------------------------------------
+
+:build_installer
+  powershell.exe -NoProfile -ExecutionPolicy Bypass -File "%WEASEL_ROOT%\WubiPinyinData\scripts\stage-locked-sources.ps1" ^
+    -RepositoryRoot "%WEASEL_ROOT%" ^
+    -OutputDirectory "%WEASEL_ROOT%\output\data\WubiPinyinData"
+  if errorlevel 1 exit /b 1
+
+  call "%WEASEL_ROOT%\WubiPinyinSettings\build_release.bat"
+  if errorlevel 1 exit /b 1
+  if not exist "%WEASEL_ROOT%\output\settings\Release\x64\WubiPinyinSettings.exe" (
+    echo Error: WubiPinyinSettings.exe was not produced.
+    exit /b 1
+  )
+
+  set "NSIS_EXE=%ProgramFiles(x86)%\NSIS\makensis.exe"
+  if exist "%NSIS_EXE%" goto nsis_found
+  set "NSIS_EXE=%ProgramFiles(x86)%\NSIS\Bin\makensis.exe"
+  if exist "%NSIS_EXE%" goto nsis_found
+  for /f "delims=" %%i in ('where makensis.exe 2^>nul') do set "NSIS_EXE=%%i"
+  if exist "%NSIS_EXE%" goto nsis_found
+  echo Error: NSIS makensis.exe was not found.
+  exit /b 1
+
+:nsis_found
+  "%NSIS_EXE%" ^
+    /DWEASEL_VERSION=%WEASEL_VERSION% ^
+    /DWEASEL_BUILD=%WEASEL_BUILD% ^
+    /DPRODUCT_VERSION=%PRODUCT_VERSION% ^
+    output\install.nsi
+  exit /b %errorlevel%
 rem ---------------------------------------------------------------------------
 
 :error

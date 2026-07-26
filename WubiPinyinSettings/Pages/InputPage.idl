@@ -1,0 +1,8 @@
+namespace WubiPinyinSettings
+{
+    [default_interface]
+    runtimeclass InputPage : Microsoft.UI.Xaml.Controls.Page
+    {
+        InputPage();
+    }
+}

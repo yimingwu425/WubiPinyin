@@ -63,6 +63,15 @@ class RimeWithWeaselHandler : public weasel::RequestHandler {
                          bool val);
   virtual void UpdateColorTheme(BOOL darkMode);
 
+  // Settings are applied when a session is created and can be refreshed by
+  // the broker without reconstructing the Rime service.
+  void SetDefaultHybridRoute(const std::string& route);
+  bool SetHybridRoute(WeaselSessionId ipc_id, const std::string& route);
+  bool CommitRawInput(WeaselSessionId ipc_id);
+  void SetLearningEnabled(bool enabled);
+  void SetShowCandidateSourceLabels(bool enabled);
+  void SetPasswordInputProtection(bool enabled);
+
   void OnUpdateUI(std::function<void()> const& cb);
 
  private:
@@ -75,6 +84,8 @@ class RimeWithWeaselHandler : public weasel::RequestHandler {
                                 bool ignore_app_name = false);
   bool _ShowMessage(weasel::Context& ctx, weasel::Status& status);
   bool _Respond(WeaselSessionId ipc_id, EatLine eat);
+  void _ApplyHybridOptions(RimeSessionId session_id,
+                           const std::string& route) const;
   void _ReadClientInfo(WeaselSessionId ipc_id, LPWSTR buffer);
   void _GetCandidateInfo(weasel::CandidateInfo& cinfo, RimeContext& ctx);
   void _GetStatus(weasel::Status& stat,
@@ -118,6 +129,10 @@ class RimeWithWeaselHandler : public weasel::RequestHandler {
   SessionStatusMap m_session_status_map;
   bool m_current_dark_mode;
   bool m_global_ascii_mode;
+  std::string m_default_hybrid_route;
+  bool m_learning_enabled;
+  bool m_show_candidate_source_labels;
+  bool m_password_input_protection;
   int m_show_notifications_time;
   DWORD m_pid;
 };

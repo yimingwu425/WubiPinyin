@@ -35,13 +35,7 @@ static void HMENU2ITfMenu(HMENU hMenu, ITfMenu* pTfMenu) {
 }
 
 static LPCWSTR GetWeaselRegName() {
-  LPCWSTR WEASEL_REG_NAME_;
-  if (is_wow64())
-    WEASEL_REG_NAME_ = L"Software\\WOW6432Node\\Rime\\Weasel";
-  else
-    WEASEL_REG_NAME_ = L"Software\\Rime\\Weasel";
-
-  return WEASEL_REG_NAME_;
+  return is_wow64() ? WUBIPINYIN_REG_KEY_32 : WEASEL_REG_KEY;
 }
 
 static bool open(const std::wstring& path) {
@@ -105,7 +99,7 @@ STDAPI CLangBarItemButton::GetInfo(TF_LANGBARITEMINFO* pInfo) {
   pInfo->dwStyle = TF_LBI_STYLE_BTN_BUTTON | TF_LBI_STYLE_BTN_MENU |
                    TF_LBI_STYLE_SHOWNINTRAY;
   pInfo->ulSort = 1;
-  lstrcpyW(pInfo->szDescription, L"WeaselTSF Button");
+  lstrcpyW(pInfo->szDescription, WUBIPINYIN_PRODUCT_NAME);
   return S_OK;
 }
 
@@ -135,15 +129,7 @@ static LANGID GetActiveProfileLangId() {
 }
 
 STDAPI CLangBarItemButton::GetTooltipString(BSTR* pbstrToolTip) {
-  LANGID langid = get_language_id();
-  if (langid == TEXTSERVICE_LANGID_HANS) {
-    *pbstrToolTip = SysAllocString(L"左键切换模式，右键打开菜单");
-  } else if (langid == TEXTSERVICE_LANGID_HANT) {
-    *pbstrToolTip = SysAllocString(L"左鍵切換模式，右鍵打開菜單");
-  } else {
-    *pbstrToolTip = SysAllocString(
-        L"Left-click to switch modes\n\nRight-click for more options");
-  }
+  *pbstrToolTip = SysAllocString(L"左键切换模式，右键打开菜单");
 
   return (*pbstrToolTip == NULL) ? E_OUTOFMEMORY : S_OK;
 }
@@ -162,15 +148,7 @@ STDAPI CLangBarItemButton::OnClick(TfLBIClick click,
     /* Open menu */
     HWND hwnd = _pTextService->_GetFocusedContextWindow();
     if (hwnd != NULL) {
-      LANGID langid = get_language_id();
-      HMENU menu;
-      if (langid == TEXTSERVICE_LANGID_HANS) {
-        menu = LoadMenuW(g_hInst, MAKEINTRESOURCE(IDR_MENU_POPUP_HANS));
-      } else if (langid == TEXTSERVICE_LANGID_HANT) {
-        menu = LoadMenuW(g_hInst, MAKEINTRESOURCE(IDR_MENU_POPUP_HANT));
-      } else {
-        menu = LoadMenuW(g_hInst, MAKEINTRESOURCE(IDR_MENU_POPUP));
-      }
+      HMENU menu = LoadMenuW(g_hInst, MAKEINTRESOURCE(IDR_MENU_POPUP_HANS));
       HMENU popupMenu = GetSubMenu(menu, 0);
       UINT wID = TrackPopupMenuEx(
           popupMenu, TPM_NONOTIFY | TPM_RETURNCMD | TPM_HORPOSANIMATION, pt.x,
@@ -288,7 +266,8 @@ void CLangBarItemButton::SetLangbarStatus(DWORD dwStatus, BOOL fSet) {
 
 std::wstring WeaselTSF::_GetRootDir() {
   std::wstring dir{};
-  RegGetStringValue(HKEY_LOCAL_MACHINE, GetWeaselRegName(), L"WeaselRoot", dir);
+  RegGetStringValue(HKEY_LOCAL_MACHINE, GetWeaselRegName(),
+                    WUBIPINYIN_ROOT_VALUE, dir);
   return dir;
 }
 
@@ -298,7 +277,7 @@ void WeaselTSF::_HandleLangBarMenuSelect(UINT wID) {
     case ID_WEASELTRAY_RERUN_SERVICE:
     case ID_WEASELTRAY_INSTALLDIR:
       if (RegGetStringValue(HKEY_LOCAL_MACHINE, GetWeaselRegName(),
-                            L"WeaselRoot", dir) == ERROR_SUCCESS) {
+                            WUBIPINYIN_ROOT_VALUE, dir) == ERROR_SUCCESS) {
         if (wID == ID_WEASELTRAY_RERUN_SERVICE) {
           std::thread th([dir]() {
             ShellExecuteW(NULL, L"open", (dir + L"\\start_service.bat").c_str(),
@@ -310,11 +289,12 @@ void WeaselTSF::_HandleLangBarMenuSelect(UINT wID) {
       }
       break;
     case ID_WEASELTRAY_USERCONFIG:
-      if (FAILED(RegGetStringValue(HKEY_CURRENT_USER, L"Software\\Rime\\Weasel",
+      if (FAILED(RegGetStringValue(HKEY_CURRENT_USER, WEASEL_REG_KEY,
                                    L"RimeUserDir", dir)) ||
           dir.empty()) {
         WCHAR _path[MAX_PATH] = {0};
-        ExpandEnvironmentStringsW(L"%AppData%\\Rime", _path, _countof(_path));
+        ExpandEnvironmentStringsW(L"%AppData%\\WubiPinyin", _path,
+                                  _countof(_path));
         dir = std::wstring(_path);
       }
       if (!dir.empty() && fs::exists(dir))

@@ -14,7 +14,7 @@ if ($h -or $help -eq "--help") {
   -os [string]                   default your running system if it's not set, Windows or macOS optional
   -build_variant [string]        default msvc for Windows, universal for macOS. clang and mingw are optional for Windows too
   -extract [boolean]             default false, 7z in PATH is required
-  -use [string]                  dev is for building weasel, weasel is for common usage in weasel(update rime.dll)
+  -use [string]                  dev updates upstream Weasel artifacts; it is disabled in this WubiPinyin tree
 
   All these params are optional.
   To use some kind of mirror of github, set it up in ~/.git-rime.conf.ps1
@@ -52,6 +52,9 @@ function SafeExit {
   }
   SafeDelVars @("authorization", "proxy_", "api_pat", "url_pat", "url_replace")
   exit
+}
+if ($use -eq "dev" -and (Test-Path (Join-Path $PSScriptRoot "WubiPinyinData"))) {
+  throw "WubiPinyin product builds compile the checked-in librime; get-rime.ps1 -use dev cannot supply production rime.dll files."
 }
 # set $os if $os not provide
 if (!$os) {

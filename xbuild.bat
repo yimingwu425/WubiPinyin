@@ -72,9 +72,10 @@ set build_rime=0
 set rime_build_variant=release
 set build_weasel=0
 set build_installer=0
-set build_arm64=0
 set build_clean=0
 set build_commands=0
+set verify_hybrid_filter=0
+if /I "%VERIFY_HYBRID_FILTER%" == "1" set verify_hybrid_filter=1
 :parse_cmdline_options
   if "%1" == "" goto end_parsing_cmdline_options
   if "%1" == "debug" (
@@ -95,7 +96,11 @@ set build_commands=0
   if "%1" == "librime" set build_rime=1
   if "%1" == "weasel" set build_weasel=1
   if "%1" == "installer" set build_installer=1
-  if "%1" == "arm64" set build_arm64=1
+  if "%1" == "verify-hybrid-filter" set verify_hybrid_filter=1
+  if "%1" == "arm64" (
+    echo ARM64 builds are not part of the WubiPinyin MVP.
+    exit /b 1
+  )
   if "%1" == "clean" set build_clean=1
   if "%1" == "commands" set build_commands=1
   if "%1" == "all" (
@@ -105,7 +110,6 @@ set build_commands=0
     set build_rime=1
     set build_weasel=1
     set build_installer=1
-    set build_arm64=1
     set build_commands=1
   )
   shift
@@ -120,25 +124,26 @@ if %build_rime% == 0 (
 if %build_commands% == 0 (
   set build_weasel=1
 ))))))
-rem 
-rem quit WeaselServer.exe before building
+
+rem Product binaries must link and package the checked-in librime, including HybridFilter.
+if %build_weasel% == 1 set build_rime=1
+if %build_installer% == 1 set build_rime=1
+if %verify_hybrid_filter% == 1 set VERIFY_HYBRID_FILTER=1
+rem
+rem quit WubiPinyinServer.exe before building
 cd /d %WEASEL_ROOT%
-if exist output\weaselserver.exe (
-  output\weaselserver.exe /q
+if exist output\WubiPinyinServer.exe (
+  output\WubiPinyinServer.exe /q
 )
 
 rem build booost
 if %build_boost% == 1 (
-  if %build_arm64% == 1 (
-    call build.bat boost arm64
-  ) else (
-    call build.bat boost
-  )
+  call build.bat boost
   if errorlevel 1 exit /b 1
   cd /d %WEASEL_ROOT%
 )
 if %build_rime% == 1 (
-  call build.bat rime
+  call build.bat %rime_build_variant% rime
   if errorlevel 1 exit /b 1
   cd /d %WEASEL_ROOT%
 )
@@ -165,16 +170,6 @@ rem if to clean
 if %build_clean% == 1 ( goto clean )
 if %build_weasel% == 0 ( goto end )
 
-if %build_arm64% == 1 (
-  xmake f -a arm64 -m %build_config% %build_sdk_option%
-  if %build_rebuild% == 1 ( xmake clean )
-  xmake
-  if errorlevel 1 goto error
-  xmake f -a arm  -m %build_config% %build_sdk_option%
-  if %build_rebuild% == 1 ( xmake clean )
-  xmake
-  if errorlevel 1 goto error
-)
 xmake f -a x64 -m %build_config% %build_sdk_option%
 if %build_rebuild% == 1 ( xmake clean )
 xmake
@@ -184,24 +179,41 @@ if %build_rebuild% == 1 ( xmake clean )
 xmake
 if errorlevel 1 goto error
 
-if %build_arm64% == 1 (
-  pushd arm64x_wrapper
-  call build.bat
-  if errorlevel 1 goto error
-  popd
-
-  copy arm64x_wrapper\weaselARM64X.dll output
-  if errorlevel 1 goto error
-)
 if %build_installer% == 1 (
-  "%ProgramFiles(x86)%"\NSIS\Bin\makensis.exe ^
-  /DWEASEL_VERSION=%WEASEL_VERSION% ^
-  /DWEASEL_BUILD=%WEASEL_BUILD% ^
-  /DPRODUCT_VERSION=%PRODUCT_VERSION% ^
-  output\install.nsi
+  call :build_installer
   if errorlevel 1 goto error
 )
 goto end
+
+:build_installer
+  powershell.exe -NoProfile -ExecutionPolicy Bypass -File "%WEASEL_ROOT%\WubiPinyinData\scripts\stage-locked-sources.ps1" ^
+    -RepositoryRoot "%WEASEL_ROOT%" ^
+    -OutputDirectory "%WEASEL_ROOT%\output\data\WubiPinyinData"
+  if errorlevel 1 exit /b 1
+
+  call "%WEASEL_ROOT%\WubiPinyinSettings\build_release.bat"
+  if errorlevel 1 exit /b 1
+  if not exist "%WEASEL_ROOT%\output\settings\Release\x64\WubiPinyinSettings.exe" (
+    echo Error: WubiPinyinSettings.exe was not produced.
+    exit /b 1
+  )
+
+  set "NSIS_EXE=%ProgramFiles(x86)%\NSIS\makensis.exe"
+  if exist "%NSIS_EXE%" goto nsis_found
+  set "NSIS_EXE=%ProgramFiles(x86)%\NSIS\Bin\makensis.exe"
+  if exist "%NSIS_EXE%" goto nsis_found
+  for /f "delims=" %%i in ('where makensis.exe 2^>nul') do set "NSIS_EXE=%%i"
+  if exist "%NSIS_EXE%" goto nsis_found
+  echo Error: NSIS makensis.exe was not found.
+  exit /b 1
+
+:nsis_found
+  "%NSIS_EXE%" ^
+    /DWEASEL_VERSION=%WEASEL_VERSION% ^
+    /DWEASEL_BUILD=%WEASEL_BUILD% ^
+    /DPRODUCT_VERSION=%PRODUCT_VERSION% ^
+    output\install.nsi
+  exit /b %errorlevel%
 
 :clean
   if exist build (

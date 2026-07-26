@@ -4,7 +4,6 @@
 #include "SwitcherSettingsDialog.h"
 #include "UIStyleSettings.h"
 #include "UIStyleSettingsDialog.h"
-#include "DictManagementDialog.h"
 #include <WeaselConstants.h>
 #include <WeaselIPC.h>
 #include <WeaselIPCData.h>
@@ -26,11 +25,54 @@ static void CreateFileIfNotExist(std::string filename) {
     o.close();
   }
 }
-Configurator::Configurator() {
-  CreateFileIfNotExist("default.custom.yaml");
-  CreateFileIfNotExist("weasel.custom.yaml");
+
+static void SeedProductDefaultConfig() {
+  const std::filesystem::path file_path =
+      WeaselUserDataPath() / L"default.custom.yaml";
+  std::error_code error;
+  const bool exists = std::filesystem::exists(file_path, error);
+  if (error) {
+    LOG(WARNING) << "Unable to inspect product default config: "
+                 << error.message();
+    return;
+  }
+  if (exists) {
+    if (!std::filesystem::is_regular_file(file_path, error)) {
+      LOG(WARNING) << "Product default config is not a regular file.";
+      return;
+    }
+    if (error) {
+      LOG(WARNING) << "Unable to inspect product default config: "
+                   << error.message();
+      return;
+    }
+    const auto size = std::filesystem::file_size(file_path, error);
+    if (error) {
+      LOG(WARNING) << "Unable to inspect product default config: "
+                   << error.message();
+      return;
+    }
+    if (size != 0) {
+      return;
+    }
+  }
+
+  std::ofstream output(file_path, std::ios::binary | std::ios::trunc);
+  if (!output) {
+    LOG(WARNING) << "Unable to create product default config.";
+    return;
+  }
+  output << "# WubiPinyin default schema selection.\n"
+            "# User changes in this file are preserved on subsequent runs.\n"
+            "patch:\n"
+            "  schema_list:\n"
+            "    - schema: hybrid_auto\n";
 }
 
+Configurator::Configurator() {
+  SeedProductDefaultConfig();
+  CreateFileIfNotExist("weasel.custom.yaml");
+}
 void Configurator::Initialize() {
   RIME_STRUCT(RimeTraits, weasel_traits);
   std::string shared_dir = wtou8(WeaselSharedDataPath().wstring());
@@ -42,7 +84,7 @@ void Configurator::Initialize() {
   weasel_traits.distribution_name = distribution_name.c_str();
   weasel_traits.distribution_code_name = WEASEL_CODE_NAME;
   weasel_traits.distribution_version = WEASEL_VERSION;
-  weasel_traits.app_name = "rime.weasel";
+  weasel_traits.app_name = "rime.wubipinyin";
   std::string log_dir = WeaselLogPath().u8string();
   weasel_traits.log_dir = log_dir.c_str();
   RimeApi* rime_api = rime_get_api();
@@ -112,9 +154,8 @@ int Configurator::Run(bool installing) {
   }
   return 0;
 }
-
 int Configurator::UpdateWorkspace(bool report_errors) {
-  HANDLE hMutex = CreateMutex(NULL, TRUE, L"WeaselDeployerMutex");
+  HANDLE hMutex = CreateMutex(NULL, TRUE, WUBIPINYIN_DEPLOYER_MUTEX);
   if (!hMutex) {
     LOG(ERROR) << "Error creating WeaselDeployerMutex.";
     return 1;
@@ -144,87 +185,6 @@ int Configurator::UpdateWorkspace(bool report_errors) {
     rime->deploy();
     // initialize weasel config
     rime->deploy_config_file("weasel.yaml", "config_version");
-  }
-
-  CloseHandle(hMutex);  // should be closed before resuming service.
-
-  if (client.Connect()) {
-    LOG(INFO) << "Resuming service.";
-    client.EndMaintenance();
-  }
-  return 0;
-}
-
-int Configurator::DictManagement() {
-  HANDLE hMutex = CreateMutex(NULL, TRUE, L"WeaselDeployerMutex");
-  if (!hMutex) {
-    LOG(ERROR) << "Error creating WeaselDeployerMutex.";
-    return 1;
-  }
-  if (GetLastError() == ERROR_ALREADY_EXISTS) {
-    LOG(WARNING) << "another deployer process is running; aborting operation.";
-    CloseHandle(hMutex);
-    // MessageBox(NULL, L"正在執行另一項部署任務，請稍候再試。", L"【小狼毫】",
-    // MB_OK | MB_ICONINFORMATION);
-    MSG_BY_IDS(IDS_STR_DEPLOYING_WAIT, IDS_STR_WEASEL,
-               MB_OK | MB_ICONINFORMATION);
-    return 1;
-  }
-
-  weasel::Client client;
-  if (client.Connect()) {
-    LOG(INFO) << "Turning WeaselServer into maintenance mode.";
-    client.StartMaintenance();
-  }
-
-  {
-    RimeApi* rime = rime_get_api();
-    if (RIME_API_AVAILABLE(rime, run_task)) {
-      rime->run_task("installation_update");  // setup user data sync dir
-    }
-    DictManagementDialog dlg;
-    dlg.DoModal();
-  }
-
-  CloseHandle(hMutex);  // should be closed before resuming service.
-
-  if (client.Connect()) {
-    LOG(INFO) << "Resuming service.";
-    client.EndMaintenance();
-  }
-  return 0;
-}
-
-int Configurator::SyncUserData() {
-  HANDLE hMutex = CreateMutex(NULL, TRUE, L"WeaselDeployerMutex");
-  if (!hMutex) {
-    LOG(ERROR) << "Error creating WeaselDeployerMutex.";
-    return 1;
-  }
-  if (GetLastError() == ERROR_ALREADY_EXISTS) {
-    LOG(WARNING) << "another deployer process is running; aborting operation.";
-    CloseHandle(hMutex);
-    // MessageBox(NULL, L"正在執行另一項部署任務，請稍候再試。", L"【小狼毫】",
-    // MB_OK | MB_ICONINFORMATION);
-    MSG_BY_IDS(IDS_STR_DEPLOYING_WAIT, IDS_STR_WEASEL,
-               MB_OK | MB_ICONINFORMATION);
-    return 1;
-  }
-
-  weasel::Client client;
-  if (client.Connect()) {
-    LOG(INFO) << "Turning WeaselServer into maintenance mode.";
-    client.StartMaintenance();
-  }
-
-  {
-    RimeApi* rime = rime_get_api();
-    if (!rime->sync_user_data()) {
-      LOG(ERROR) << "Error synching user data.";
-      CloseHandle(hMutex);
-      return 1;
-    }
-    rime->join_maintenance_thread();
   }
 
   CloseHandle(hMutex);  // should be closed before resuming service.

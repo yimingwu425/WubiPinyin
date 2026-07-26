@@ -1,0 +1,806 @@
+diff --git a/src/rime/gear/gears_module.cc b/src/rime/gear/gears_module.cc
+index 59679b0..e9f1125 100644
+--- a/src/rime/gear/gears_module.cc
++++ b/src/rime/gear/gears_module.cc
+@@ -18,0 +19 @@
++#include <rime/gear/hybrid_filter.h>
+@@ -87,0 +89 @@ static void rime_gears_initialize() {
++  r.Register("hybrid_filter", new Component<HybridFilter>);
+diff --git a/src/rime/gear/memory.cc b/src/rime/gear/memory.cc
+index ad475ca..f33a68b 100644
+--- a/src/rime/gear/memory.cc
++++ b/src/rime/gear/memory.cc
+@@ -102 +102,2 @@ void Memory::OnCommit(Context* ctx) {
+-  if (!user_dict_ || user_dict_->readonly())
++  if (!user_dict_ || user_dict_->readonly() ||
++      ctx->get_option("disable_learning"))
+diff --git a/src/rime_api_impl.h b/src/rime_api_impl.h
+index 6e906cf..5bff772 100644
+--- a/src/rime_api_impl.h
++++ b/src/rime_api_impl.h
+@@ -5,0 +6,2 @@
++#include <cstdint>
++
+@@ -206 +208,13 @@ static void rime_candidate_copy(RimeCandidate* dest, const an<Candidate>& src) {
+-  dest->reserved = nullptr;
++  // The WubiPinyin hybrid filter encodes its source in the public candidate
++  // type. Keep this ABI-compatible: clients that do not know the extension
++  // still see a nullable opaque field, while the WubiPinyin UI can read the
++  // small integer value without depending on the filter implementation.
++  uintptr_t source_mask = 0;
++  if (src->type() == "hybrid_wubi") {
++    source_mask = 1;
++  } else if (src->type() == "hybrid_pinyin") {
++    source_mask = 2;
++  } else if (src->type() == "hybrid_both") {
++    source_mask = 3;
++  }
++  dest->reserved = reinterpret_cast<void*>(source_mask);
+diff --git a/src/rime/gear/hybrid_filter.cc b/src/rime/gear/hybrid_filter.cc
+new file mode 100644
+index 0000000..a230f47
+--- /dev/null
++++ b/src/rime/gear/hybrid_filter.cc
+@@ -0,0 +1,407 @@
++//
++// Copyright RIME Developers
++// Distributed under the BSD License
++//
++
++#include <algorithm>
++#include <rime/candidate.h>
++#include <rime/config.h>
++#include <rime/context.h>
++#include <rime/engine.h>
++#include <rime/language.h>
++#include <rime/schema.h>
++#include <rime/segmentation.h>
++#include <rime/translation.h>
++#include <rime/gear/hybrid_filter.h>
++#include <rime/gear/translator_commons.h>
++
++namespace rime {
++
++namespace {
++
++CandidateSourceMask MergeSourceMasks(CandidateSourceMask left,
++                                      CandidateSourceMask right) {
++  return static_cast<CandidateSourceMask>(static_cast<uint8_t>(left) |
++                                          static_cast<uint8_t>(right));
++}
++
++CandidateSourceMask SourceMaskForName(const string& name) {
++  if (name == "wubi")
++    return kCandidateSourceWubi;
++  if (name == "pinyin")
++    return kCandidateSourcePinyin;
++  return kCandidateSourceNone;
++}
++
++void LoadSourceTypes(Config* config,
++                     const string& path,
++                     CandidateSourceMask source_mask,
++                     map<string, CandidateSourceMask>* source_types) {
++  if (!config || !source_types)
++    return;
++  auto types = config->GetList(path);
++  if (!types)
++    return;
++  for (auto iter = types->begin(); iter != types->end(); ++iter) {
++    auto type = As<ConfigValue>(*iter);
++    if (!type)
++      continue;
++    (*source_types)[type->str()] = MergeSourceMasks(
++        (*source_types)[type->str()], source_mask);
++  }
++}
++
++}  // namespace
++
++const char* HybridCandidate::TypeForSourceMask(
++    CandidateSourceMask source_mask) {
++  switch (source_mask) {
++    case kCandidateSourceWubi:
++      return "hybrid_wubi";
++    case kCandidateSourcePinyin:
++      return "hybrid_pinyin";
++    case kCandidateSourceBoth:
++      return "hybrid_both";
++    default:
++      return "hybrid_unknown";
++  }
++}
++
++HybridCandidate::HybridCandidate(const an<Candidate>& item,
++                                 CandidateSourceMask source_mask)
++    : UniquifiedCandidate(item, TypeForSourceMask(source_mask)),
++      source_mask_(source_mask) {}
++
++void HybridCandidate::AddSourceMask(CandidateSourceMask source_mask) {
++  source_mask_ = MergeSourceMasks(source_mask_, source_mask);
++  set_type(TypeForSourceMask(source_mask_));
++}
++
++class HybridFilterTranslation : public PrefetchTranslation {
++ public:
++  HybridFilterTranslation(an<Translation> translation, HybridFilter* filter)
++      : PrefetchTranslation(translation),
++        filter_(filter),
++        next_order_(filter->ranking_window_) {
++    BuildInitialWindow();
++  }
++
++ private:
++  struct SourceCandidate {
++    an<Candidate> candidate;
++    CandidateSourceMask source_mask;
++  };
++
++  struct SourceEntry {
++    vector<SourceCandidate> candidates;
++    CandidateSourceMask source_mask = kCandidateSourceNone;
++    size_t order = 0;
++    an<HybridCandidate> output;
++  };
++
++  struct RankedCandidate {
++    an<Candidate> candidate;
++    size_t order;
++    bool rankable;
++  };
++
++  an<HybridCandidate> BuildCandidate(const SourceEntry& entry) {
++    if (!filter_->Accepts(entry.source_mask))
++      return nullptr;
++
++    CandidateSourceMask required = filter_->RequiredSourceMask();
++    size_t primary_index = entry.candidates.size();
++    for (size_t i = 0; i < entry.candidates.size(); ++i) {
++      const auto& current = entry.candidates[i];
++      if (!current.candidate ||
++          (required != kCandidateSourceNone &&
++           (static_cast<uint8_t>(current.source_mask) &
++            static_cast<uint8_t>(required)) == 0)) {
++        continue;
++      }
++      if (primary_index == entry.candidates.size() ||
++          current.candidate->compare(
++              *entry.candidates[primary_index].candidate) < 0) {
++        primary_index = i;
++      }
++    }
++    if (primary_index == entry.candidates.size())
++      return nullptr;
++
++    auto hybrid = New<HybridCandidate>(entry.candidates[primary_index].candidate,
++                                       entry.source_mask);
++    for (size_t i = 0; i < entry.candidates.size(); ++i) {
++      if (i != primary_index)
++        hybrid->Append(entry.candidates[i].candidate);
++    }
++    hybrid->set_quality(entry.candidates[primary_index].candidate->quality());
++    return hybrid;
++  }
++
++  size_t FindOrCreateEntry(const an<Candidate>& candidate, size_t order) {
++    size_t entry_index = source_entries_.size();
++    if (filter_->deduplicate_) {
++      auto existing = source_entry_indices_.find(candidate->text());
++      if (existing != source_entry_indices_.end()) {
++        entry_index = existing->second;
++      }
++    }
++    if (entry_index == source_entries_.size()) {
++      source_entries_.push_back({{}, kCandidateSourceNone, order, nullptr});
++      if (filter_->deduplicate_) {
++        source_entry_indices_[candidate->text()] = entry_index;
++      }
++    }
++    return entry_index;
++  }
++
++  void AddSourceCandidate(SourceEntry* entry,
++                          const an<Candidate>& candidate,
++                          CandidateSourceMask source_mask) {
++    entry->candidates.push_back({candidate, source_mask});
++    entry->source_mask = MergeSourceMasks(entry->source_mask, source_mask);
++    if (entry->output) {
++      entry->output->Append(candidate);
++      entry->output->AddSourceMask(source_mask);
++    }
++  }
++
++  void SortInitialCandidates(vector<RankedCandidate>* ranked) {
++    std::stable_sort(
++        ranked->begin(), ranked->end(),
++        [](const RankedCandidate& left, const RankedCandidate& right) {
++          return left.order < right.order;
++        });
++    const auto compare_candidates =
++        [](const RankedCandidate& left, const RankedCandidate& right) {
++          const int comparison = left.candidate->compare(*right.candidate);
++          return comparison != 0 ? comparison < 0 : left.order < right.order;
++        };
++    auto sortable_begin = ranked->begin();
++    for (auto current = ranked->begin(); current != ranked->end(); ++current) {
++      if (current->rankable) {
++        continue;
++      }
++      std::sort(sortable_begin, current, compare_candidates);
++      sortable_begin = current + 1;
++    }
++    std::sort(sortable_begin, ranked->end(), compare_candidates);
++    for (const auto& candidate : *ranked) {
++      cache_.push_back(candidate.candidate);
++    }
++  }
++
++  void BuildInitialWindow() {
++    vector<RankedCandidate> ranked;
++
++    for (size_t order = 0;
++         translation_ && !translation_->exhausted() &&
++         order < filter_->ranking_window_;
++         ++order) {
++      auto candidate = translation_->Peek();
++      translation_->Next();
++      if (!candidate)
++        continue;
++
++      CandidateSourceMask source_mask = filter_->ClassifyCandidate(candidate);
++      if (source_mask == kCandidateSourceNone) {
++        if (filter_->passthrough_unclassified_) {
++          ranked.push_back({candidate, order, false});
++        }
++        continue;
++      }
++
++      SourceEntry& entry = source_entries_[FindOrCreateEntry(candidate, order)];
++      AddSourceCandidate(&entry, candidate, source_mask);
++    }
++
++    for (auto& entry : source_entries_) {
++      if (auto candidate = BuildCandidate(entry)) {
++        entry.output = candidate;
++        ranked.push_back({candidate, entry.order, true});
++      }
++    }
++    SortInitialCandidates(&ranked);
++    if (cache_.empty() && (!translation_ || translation_->exhausted())) {
++      set_exhausted(true);
++    }
++  }
++
++  bool Replenish() override {
++    while (translation_ && !translation_->exhausted()) {
++      const auto candidate = translation_->Peek();
++      const size_t order = next_order_++;
++      translation_->Next();
++      if (!candidate) {
++        continue;
++      }
++
++      const CandidateSourceMask source_mask =
++          filter_->ClassifyCandidate(candidate);
++      if (source_mask == kCandidateSourceNone) {
++        if (filter_->passthrough_unclassified_) {
++          cache_.push_back(candidate);
++          return true;
++        }
++        continue;
++      }
++
++      SourceEntry& entry =
++          source_entries_[FindOrCreateEntry(candidate, order)];
++      const bool was_emitted = static_cast<bool>(entry.output);
++      AddSourceCandidate(&entry, candidate, source_mask);
++      if (was_emitted) {
++        continue;
++      }
++      if (auto output = BuildCandidate(entry)) {
++        entry.output = output;
++        cache_.push_back(output);
++        return true;
++      }
++    }
++    set_exhausted(true);
++    return false;
++  }
++
++  HybridFilter* filter_;
++  vector<SourceEntry> source_entries_;
++  map<string, size_t> source_entry_indices_;
++  size_t next_order_ = 0;
++};
++
++HybridFilter::HybridFilter(const Ticket& ticket) : Filter(ticket) {
++  source_types_["table"] = kCandidateSourceWubi;
++  source_types_["user_table"] = kCandidateSourceWubi;
++  source_types_["phrase"] = kCandidateSourcePinyin;
++  source_types_["user_phrase"] = kCandidateSourcePinyin;
++  source_types_["sentence"] = kCandidateSourcePinyin;
++  source_languages_["hybrid_auto_wubi"] = kCandidateSourceWubi;
++  source_languages_["hybrid_auto_pinyin"] = kCandidateSourcePinyin;
++  LoadConfig();
++}
++
++void HybridFilter::LoadConfig() {
++  if (!engine_ || !engine_->schema())
++    return;
++  Config* config = engine_->schema()->config();
++  if (!config)
++    return;
++
++  config->GetString(name_space_ + "/tag", &tag_);
++  config->GetString(name_space_ + "/route_options/auto", &auto_option_);
++  config->GetString(name_space_ + "/route_options/wubi", &wubi_option_);
++  config->GetString(name_space_ + "/route_options/pinyin", &pinyin_option_);
++  config->GetBool(name_space_ + "/deduplicate", &deduplicate_);
++  config->GetBool(name_space_ + "/passthrough_unclassified",
++                  &passthrough_unclassified_);
++  int ranking_window = 0;
++  if (config->GetInt(name_space_ + "/ranking_window", &ranking_window) &&
++      ranking_window > 0) {
++    ranking_window_ = (std::min)(static_cast<size_t>(ranking_window),
++                                 static_cast<size_t>(256));
++  }
++
++  int source_mask = 0;
++  if (config->GetInt(name_space_ + "/candidate_source_masks/wubi",
++                     &source_mask) &&
++      source_mask != kCandidateSourceWubi) {
++    LOG(WARNING) << name_space_
++                 << "/candidate_source_masks/wubi must be 1; using 1.";
++  }
++  if (config->GetInt(name_space_ + "/candidate_source_masks/pinyin",
++                     &source_mask) &&
++      source_mask != kCandidateSourcePinyin) {
++    LOG(WARNING) << name_space_
++                 << "/candidate_source_masks/pinyin must be 2; using 2.";
++  }
++
++  LoadSourceTypes(config, name_space_ + "/wubi_candidate_types",
++                  kCandidateSourceWubi, &source_types_);
++  LoadSourceTypes(config, name_space_ + "/pinyin_candidate_types",
++                  kCandidateSourcePinyin, &source_types_);
++
++  if (auto source_languages =
++          config->GetMap(name_space_ + "/source_languages")) {
++    for (auto iter = source_languages->begin();
++         iter != source_languages->end(); ++iter) {
++      auto source = As<ConfigValue>(iter->second);
++      if (!source)
++        continue;
++      CandidateSourceMask source_mask = SourceMaskForName(source->str());
++      if (source_mask != kCandidateSourceNone) {
++        source_languages_[iter->first] = source_mask;
++      }
++    }
++  }
++}
++
++CandidateSourceMask HybridFilter::ClassifyCandidate(
++    const an<Candidate>& candidate) const {
++  CandidateSourceMask source_mask = kCandidateSourceNone;
++  for (const auto& genuine : Candidate::GetGenuineCandidates(candidate)) {
++    if (!genuine)
++      continue;
++    CandidateSourceMask genuine_source = kCandidateSourceNone;
++    if (auto phrase = As<Phrase>(genuine)) {
++      if (auto language = phrase->language()) {
++        auto source = source_languages_.find(language->name());
++        if (source != source_languages_.end()) {
++          genuine_source = source->second;
++        }
++      }
++    }
++    if (genuine_source == kCandidateSourceNone) {
++      auto type = source_types_.find(genuine->type());
++      if (type != source_types_.end()) {
++        genuine_source = type->second;
++      }
++    }
++    source_mask = MergeSourceMasks(source_mask, genuine_source);
++  }
++  return source_mask;
++}
++
++bool HybridFilter::Accepts(CandidateSourceMask source_mask) const {
++  CandidateSourceMask required = RequiredSourceMask();
++  if (required == kCandidateSourceNone)
++    return true;
++  return (static_cast<uint8_t>(source_mask) & static_cast<uint8_t>(required)) !=
++         0;
++}
++
++CandidateSourceMask HybridFilter::RequiredSourceMask() const {
++  switch (CurrentRoute()) {
++    case kWubiRoute:
++      return kCandidateSourceWubi;
++    case kPinyinRoute:
++      return kCandidateSourcePinyin;
++    default:
++      return kCandidateSourceNone;
++  }
++}
++
++HybridFilter::Route HybridFilter::CurrentRoute() const {
++  if (!engine_ || !engine_->context())
++    return kAutoRoute;
++  Context* context = engine_->context();
++  if (context->get_option(auto_option_))
++    return kAutoRoute;
++  if (context->get_option(wubi_option_))
++    return kWubiRoute;
++  if (context->get_option(pinyin_option_))
++    return kPinyinRoute;
++  return kAutoRoute;
++}
++
++bool HybridFilter::AppliesToSegment(Segment* segment) {
++  return segment && segment->HasTag(tag_);
++}
++
++an<Translation> HybridFilter::Apply(an<Translation> translation,
++                                    CandidateList*) {
++  if (!translation || translation->exhausted())
++    return translation;
++  return New<HybridFilterTranslation>(translation, this);
++}
++
++}  // namespace rime
+diff --git a/src/rime/gear/hybrid_filter.h b/src/rime/gear/hybrid_filter.h
+new file mode 100644
+index 0000000..b4ad41f
+--- /dev/null
++++ b/src/rime/gear/hybrid_filter.h
+@@ -0,0 +1,72 @@
++//
++// Copyright RIME Developers
++// Distributed under the BSD License
++//
++
++#ifndef RIME_HYBRID_FILTER_H_
++#define RIME_HYBRID_FILTER_H_
++
++#include <stdint.h>
++#include <rime/filter.h>
++
++namespace rime {
++
++enum CandidateSourceMask : uint8_t {
++  kCandidateSourceNone = 0,
++  kCandidateSourceWubi = 1,
++  kCandidateSourcePinyin = 2,
++  kCandidateSourceBoth = kCandidateSourceWubi | kCandidateSourcePinyin,
++};
++
++class HybridCandidate : public UniquifiedCandidate {
++ public:
++  HybridCandidate(const an<Candidate>& item, CandidateSourceMask source_mask);
++
++  CandidateSourceMask source_mask() const { return source_mask_; }
++  void AddSourceMask(CandidateSourceMask source_mask);
++
++ private:
++  static const char* TypeForSourceMask(CandidateSourceMask source_mask);
++
++  CandidateSourceMask source_mask_;
++};
++
++class HybridFilterTranslation;
++
++class HybridFilter : public Filter {
++ public:
++  explicit HybridFilter(const Ticket& ticket);
++
++  virtual an<Translation> Apply(an<Translation> translation,
++                                CandidateList* candidates);
++  virtual bool AppliesToSegment(Segment* segment);
++
++ private:
++  friend class HybridFilterTranslation;
++
++  enum Route {
++    kAutoRoute,
++    kWubiRoute,
++    kPinyinRoute,
++  };
++
++  void LoadConfig();
++  CandidateSourceMask ClassifyCandidate(const an<Candidate>& candidate) const;
++  bool Accepts(CandidateSourceMask source_mask) const;
++  CandidateSourceMask RequiredSourceMask() const;
++  Route CurrentRoute() const;
++
++  string tag_ = "abc";
++  string auto_option_ = "hybrid_auto";
++  string wubi_option_ = "hybrid_wubi";
++  string pinyin_option_ = "hybrid_pinyin";
++  bool deduplicate_ = true;
++  bool passthrough_unclassified_ = true;
++  size_t ranking_window_ = 64;
++  map<string, CandidateSourceMask> source_types_;
++  map<string, CandidateSourceMask> source_languages_;
++};
++
++}  // namespace rime
++
++#endif  // RIME_HYBRID_FILTER_H_
+diff --git a/test/hybrid_filter_test.cc b/test/hybrid_filter_test.cc
+new file mode 100644
+index 0000000..82ef871
+--- /dev/null
++++ b/test/hybrid_filter_test.cc
+@@ -0,0 +1,271 @@
++//
++// Copyright RIME Developers
++// Distributed under the BSD License
++//
++
++#include <sstream>
++#include <string>
++#include <gtest/gtest.h>
++#include <rime/candidate.h>
++#include <rime/config.h>
++#include <rime/dict/vocabulary.h>
++#include <rime/engine.h>
++#include <rime/language.h>
++#include <rime/schema.h>
++#include <rime/translation.h>
++#include <rime/gear/hybrid_filter.h>
++#include <rime/gear/translator_commons.h>
++
++using namespace rime;
++
++namespace {
++
++const char kHybridFilterConfig[] = R"(
++hybrid:
++  tag: abc
++  route_options:
++    auto: hybrid_auto
++    wubi: hybrid_wubi
++    pinyin: hybrid_pinyin
++  candidate_source_masks:
++    wubi: 1
++    pinyin: 2
++  source_languages:
++    hybrid_auto_wubi: wubi
++    hybrid_auto_pinyin: pinyin
++  wubi_candidate_types: [ table, user_table ]
++  pinyin_candidate_types: [ phrase, user_phrase, sentence ]
++  deduplicate: true
++  passthrough_unclassified: true
++  ranking_window: 64
++)";
++
++class HybridFilterTestEngine : public Engine {
++ public:
++  explicit HybridFilterTestEngine(Config* config) {
++    schema_.reset(new Schema("hybrid_filter_test", config));
++  }
++};
++
++Config* MakeConfig() {
++  auto config = new Config;
++  std::istringstream stream(kHybridFilterConfig);
++  if (!config->LoadFromStream(stream)) {
++    delete config;
++    return nullptr;
++  }
++  return config;
++}
++
++an<Candidate> MakePhrase(const Language* language,
++                         const string& type,
++                         const string& text,
++                         double quality) {
++  auto entry = New<DictEntry>();
++  entry->text = text;
++  auto phrase = New<Phrase>(language, type, 0, 2, entry);
++  phrase->set_quality(quality);
++  return phrase;
++}
++
++class CountingTranslation : public FifoTranslation {
++ public:
++  bool Next() override {
++    ++next_count;
++    return FifoTranslation::Next();
++  }
++
++  size_t next_count = 0;
++};
++
++vector<of<Candidate>> Collect(an<Translation> translation,
++                              CandidateList* candidates) {
++  vector<of<Candidate>> result;
++  while (translation && !translation->exhausted()) {
++    auto candidate = translation->Peek();
++    if (candidate) {
++      result.push_back(candidate);
++      candidates->push_back(candidate);
++    }
++    translation->Next();
++  }
++  return result;
++}
++
++}  // namespace
++
++TEST(HybridFilterTest, RegistersAsAFilterComponent) {
++  EXPECT_NE(nullptr, Filter::Require("hybrid_filter"));
++}
++
++TEST(HybridFilterTest, MergesSourcesAndKeepsTheGenuineCandidate) {
++  Config* config = MakeConfig();
++  ASSERT_NE(nullptr, config);
++  the<Engine> engine(new HybridFilterTestEngine(config));
++  HybridFilter filter(Ticket(engine.get(), "hybrid"));
++
++  Language wubi("hybrid_auto_wubi");
++  Language pinyin("hybrid_auto_pinyin");
++  auto translation = New<FifoTranslation>();
++  translation->Append(MakePhrase(&wubi, "table", "同", 1.0));
++  translation->Append(MakePhrase(&pinyin, "completion", "你", 2.0));
++  translation->Append(MakePhrase(&pinyin, "phrase", "同", 3.0));
++  translation->Append(New<SimpleCandidate>("punct", 0, 2, "，"));
++
++  CandidateList candidates;
++  vector<of<Candidate>> result =
++      Collect(filter.Apply(translation, &candidates), &candidates);
++
++  ASSERT_EQ(3U, result.size());
++  auto merged = As<HybridCandidate>(result[0]);
++  ASSERT_TRUE(bool(merged));
++  EXPECT_EQ(kCandidateSourceBoth, merged->source_mask());
++  EXPECT_EQ("hybrid_both", merged->type());
++  EXPECT_DOUBLE_EQ(3.0, merged->quality());
++  EXPECT_EQ("phrase", Candidate::GetGenuineCandidate(merged)->type());
++
++  auto completion = As<HybridCandidate>(result[1]);
++  ASSERT_TRUE(bool(completion));
++  EXPECT_EQ(kCandidateSourcePinyin, completion->source_mask());
++  EXPECT_EQ("hybrid_pinyin", completion->type());
++  EXPECT_EQ("punct", result[2]->type());
++}
++
++TEST(HybridFilterTest, RouteLockFiltersOnlySourceCandidates) {
++  Config* config = MakeConfig();
++  ASSERT_NE(nullptr, config);
++  the<Engine> engine(new HybridFilterTestEngine(config));
++  engine->context()->set_option("hybrid_wubi", true);
++  HybridFilter filter(Ticket(engine.get(), "hybrid"));
++
++  Language wubi("hybrid_auto_wubi");
++  Language pinyin("hybrid_auto_pinyin");
++  auto translation = New<FifoTranslation>();
++  translation->Append(MakePhrase(&pinyin, "phrase", "拼", 3.0));
++  translation->Append(MakePhrase(&wubi, "table", "五", 2.0));
++  translation->Append(New<SimpleCandidate>("punct", 0, 2, "，"));
++
++  CandidateList candidates;
++  vector<of<Candidate>> result =
++      Collect(filter.Apply(translation, &candidates), &candidates);
++
++  ASSERT_EQ(2U, result.size());
++  auto wubi_candidate = As<HybridCandidate>(result[0]);
++  ASSERT_TRUE(bool(wubi_candidate));
++  EXPECT_EQ(kCandidateSourceWubi, wubi_candidate->source_mask());
++  EXPECT_EQ("五", wubi_candidate->text());
++  EXPECT_EQ("punct", result[1]->type());
++}
++
++TEST(HybridFilterTest, RouteLockMergesAnEarlierNonselectedDuplicate) {
++  Config* config = MakeConfig();
++  ASSERT_NE(nullptr, config);
++  the<Engine> engine(new HybridFilterTestEngine(config));
++  engine->context()->set_option("hybrid_wubi", true);
++  HybridFilter filter(Ticket(engine.get(), "hybrid"));
++
++  Language wubi("hybrid_auto_wubi");
++  Language pinyin("hybrid_auto_pinyin");
++  auto translation = New<FifoTranslation>();
++  translation->Append(MakePhrase(&pinyin, "phrase", "同", 3.0));
++  translation->Append(MakePhrase(&wubi, "table", "同", 2.0));
++
++  CandidateList candidates;
++  vector<of<Candidate>> result =
++      Collect(filter.Apply(translation, &candidates), &candidates);
++
++  ASSERT_EQ(1U, result.size());
++  auto merged = As<HybridCandidate>(result[0]);
++  ASSERT_TRUE(bool(merged));
++  EXPECT_EQ(kCandidateSourceBoth, merged->source_mask());
++  EXPECT_EQ("hybrid_both", merged->type());
++}
++
++TEST(HybridFilterTest, UnclassifiedCandidateDoesNotSkipTheNextCandidate) {
++  Config* config = MakeConfig();
++  ASSERT_NE(nullptr, config);
++  the<Engine> engine(new HybridFilterTestEngine(config));
++  HybridFilter filter(Ticket(engine.get(), "hybrid"));
++
++  Language wubi("hybrid_auto_wubi");
++  auto translation = New<FifoTranslation>();
++  translation->Append(New<SimpleCandidate>("punct", 0, 2, "，"));
++  translation->Append(MakePhrase(&wubi, "table", "五", 2.0));
++
++  CandidateList candidates;
++  vector<of<Candidate>> result =
++      Collect(filter.Apply(translation, &candidates), &candidates);
++
++  ASSERT_EQ(2U, result.size());
++  EXPECT_EQ("punct", result[0]->type());
++  EXPECT_EQ("五", result[1]->text());
++}
++
++TEST(HybridFilterTest, KeepsCandidatesOutsideTheRankingWindow) {
++  Config* config = MakeConfig();
++  ASSERT_NE(nullptr, config);
++  the<Engine> engine(new HybridFilterTestEngine(config));
++  HybridFilter filter(Ticket(engine.get(), "hybrid"));
++
++  Language wubi("hybrid_auto_wubi");
++  auto translation = New<FifoTranslation>();
++  for (size_t index = 0; index < 65; ++index) {
++    translation->Append(MakePhrase(&wubi, "table",
++                                   "候" + std::to_string(index),
++                                   static_cast<double>(65 - index)));
++  }
++
++  CandidateList candidates;
++  vector<of<Candidate>> result =
++      Collect(filter.Apply(translation, &candidates), &candidates);
++
++  ASSERT_EQ(65U, result.size());
++  EXPECT_EQ("候64", result.back()->text());
++}
++
++TEST(HybridFilterTest, LimitsInitialLookupToTheRankingWindow) {
++  Config* config = MakeConfig();
++  ASSERT_NE(nullptr, config);
++  the<Engine> engine(new HybridFilterTestEngine(config));
++  HybridFilter filter(Ticket(engine.get(), "hybrid"));
++
++  Language wubi("hybrid_auto_wubi");
++  auto translation = New<CountingTranslation>();
++  for (size_t index = 0; index < 65; ++index) {
++    translation->Append(MakePhrase(&wubi, "table",
++                                   "候" + std::to_string(index),
++                                   static_cast<double>(65 - index)));
++  }
++
++  CandidateList candidates;
++  auto filtered = filter.Apply(translation, &candidates);
++  ASSERT_TRUE(bool(filtered));
++  EXPECT_EQ(64U, translation->next_count);
++
++  for (size_t index = 0; index < 64; ++index) {
++    ASSERT_FALSE(filtered->exhausted());
++    ASSERT_TRUE(bool(filtered->Peek()));
++    filtered->Next();
++  }
++  EXPECT_EQ(64U, translation->next_count);
++  ASSERT_TRUE(bool(filtered->Peek()));
++  EXPECT_EQ(65U, translation->next_count);
++}
++
++TEST(HybridFilterTest, UsesKnownPhraseLanguageBeforeGenericType) {
++  Config* config = MakeConfig();
++  ASSERT_NE(nullptr, config);
++  the<Engine> engine(new HybridFilterTestEngine(config));
++  engine->context()->set_option("hybrid_pinyin", true);
++  HybridFilter filter(Ticket(engine.get(), "hybrid"));
++
++  Language wubi("hybrid_auto_wubi");
++  auto translation = New<FifoTranslation>();
++  translation->Append(MakePhrase(&wubi, "sentence", "五笔句", 2.0));
++
++  CandidateList candidates;
++  vector<of<Candidate>> result =
++      Collect(filter.Apply(translation, &candidates), &candidates);
++
++  EXPECT_TRUE(result.empty());
++}

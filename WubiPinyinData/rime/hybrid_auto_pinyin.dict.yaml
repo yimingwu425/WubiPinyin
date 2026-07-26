@@ -1,0 +1,11 @@
+# Rime dictionary: WubiPinyin full-Pinyin aggregate
+# encoding: utf-8
+
+---
+name: hybrid_auto_pinyin
+version: "0.1"
+sort: by_weight
+import_tables:
+  - pinyin_simp
+  - hybrid_auto_pinyin_user
+...

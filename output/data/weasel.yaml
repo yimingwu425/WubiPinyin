@@ -20,16 +20,17 @@ global_ascii: false
 style:
   antialias_mode: default
   ascii_tip_follow_cursor: false
-  color_scheme: aqua
-  font_face: Microsoft YaHei
-  label_font_face: Microsoft YaHei
-  comment_font_face: Microsoft YaHei
+  color_scheme: wubipinyin_light
+  color_scheme_dark: wubipinyin_dark
+  font_face: Segoe UI Variable, Microsoft YaHei UI
+  label_font_face: Segoe UI Variable, Microsoft YaHei UI
+  comment_font_face: Segoe UI Variable, Microsoft YaHei UI
   font_point: 14
-  label_font_point: 14
-  comment_font_point: 14
+  label_font_point: 12
+  comment_font_point: 11
   candidate_abbreviate_length: 0
-  click_to_capture: false
-  horizontal: false
+  click_to_capture: true
+  horizontal: true
   fullscreen: false
   inline_preedit: false
   preedit_type: composition
@@ -45,25 +46,71 @@ style:
   layout:
     align_type: center
     max_width: 0	#set 0 to disable max width
-    min_width: 160
+    min_width: 0
     min_height: 0
     max_height: 0	#set 0 to disable max height
-    border_width: 3
-    margin_x: 12
-    margin_y: 12
-    spacing: 10
-    candidate_spacing: 5
+    border_width: 1
+    margin_x: 10
+    margin_y: 8
+    spacing: 6
+    candidate_spacing: 8
     hilite_spacing: 4
-    hilite_padding: 2
-    round_corner: 4   #别名 hilited_corner_radius
-    corner_radius: 4
-    shadow_radius: 0
-    shadow_offset_x: 4
-    shadow_offset_y: 4
+    hilite_padding: 4
+    round_corner: 8   #别名 hilited_corner_radius
+    corner_radius: 8
+    shadow_radius: 10
+    shadow_offset_x: 0
+    shadow_offset_y: 3
     linespacing: 0 # percentage of font point, 0 to disable
     baseline: 0 # percentage of font point, 0 to disable
 
 preset_color_schemes:
+  wubipinyin_light:
+    name: 五笔·拼音 浅色
+    author: WubiPinyin
+    color_format: argb
+    text_color: 0xff1d1d1f
+    candidate_text_color: 0xff1d1d1f
+    comment_text_color: 0xff6e6e73
+    label_text_color: 0xff6e6e73
+    back_color: 0xf7ffffff
+    border_color: 0x33787880
+    shadow_color: 0x26000000
+    hilited_text_color: 0xff1d1d1f
+    hilited_back_color: 0x00000000
+    hilited_candidate_text_color: 0xffffffff
+    hilited_candidate_back_color: 0xff0a84ff
+    hilited_candidate_shadow_color: 0x00000000
+    hilited_label_text_color: 0xffffffff
+    hilited_comment_text_color: 0xd9ffffff
+    candidate_back_color: 0x00000000
+    candidate_shadow_color: 0x00000000
+    candidate_border_color: 0x00000000
+    hilited_candidate_border_color: 0x00000000
+
+  wubipinyin_dark:
+    name: 五笔·拼音 深色
+    author: WubiPinyin
+    color_format: argb
+    text_color: 0xfff5f5f7
+    candidate_text_color: 0xfff5f5f7
+    comment_text_color: 0xffaeaeb2
+    label_text_color: 0xffaeaeb2
+    back_color: 0xf22c2c2e
+    border_color: 0x4d85858a
+    shadow_color: 0x4d000000
+    hilited_text_color: 0xfff5f5f7
+    hilited_back_color: 0x00000000
+    hilited_candidate_text_color: 0xffffffff
+    hilited_candidate_back_color: 0xff0a84ff
+    hilited_candidate_shadow_color: 0x00000000
+    hilited_label_text_color: 0xffffffff
+    hilited_comment_text_color: 0xd9ffffff
+    candidate_back_color: 0x00000000
+    candidate_shadow_color: 0x00000000
+    candidate_border_color: 0x00000000
+    hilited_candidate_border_color: 0x00000000
+
   aqua:
     name: 碧水／Aqua
     author: 佛振 <chen.sst@gmail.com>

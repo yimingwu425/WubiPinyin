@@ -1,0 +1,71 @@
+<?xml version="1.0" encoding="utf-8"?>
+<Project ToolsVersion="4.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+  <ItemGroup>
+    <Filter Include="Source Files">
+      <UniqueIdentifier>{E872D6E3-FAFA-4FEE-95D1-A7FB61AA225A}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Header Files">
+      <UniqueIdentifier>{3B0EE181-DBE2-4F8A-A3B0-7F0DAF253F29}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="XAML">
+      <UniqueIdentifier>{174F53B8-D3B1-437E-B911-FB52A403302F}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="XAML\\Pages">
+      <UniqueIdentifier>{D142347E-BE12-4D8E-840B-D82464F8D459}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="IDL">
+      <UniqueIdentifier>{FB0B6355-D1F2-4EED-B8EF-6B7B82A38682}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="IDL\\Pages">
+      <UniqueIdentifier>{A0FD47DD-8B70-4B0E-8F6B-07FF5C8FC901}</UniqueIdentifier>
+    </Filter>
+  </ItemGroup>
+  <ItemGroup>
+    <ApplicationDefinition Include="App.xaml"><Filter>XAML</Filter></ApplicationDefinition>
+    <Page Include="MainWindow.xaml"><Filter>XAML</Filter></Page>
+    <Page Include="Pages\AboutPage.xaml"><Filter>XAML\Pages</Filter></Page>
+    <Page Include="Pages\AppearancePage.xaml"><Filter>XAML\Pages</Filter></Page>
+    <Page Include="Pages\DictionaryPage.xaml"><Filter>XAML\Pages</Filter></Page>
+    <Page Include="Pages\InputPage.xaml"><Filter>XAML\Pages</Filter></Page>
+    <Page Include="Pages\LearningPage.xaml"><Filter>XAML\Pages</Filter></Page>
+  </ItemGroup>
+  <ItemGroup>
+    <Midl Include="App.idl"><Filter>IDL</Filter></Midl>
+    <Midl Include="MainWindow.idl"><Filter>IDL</Filter></Midl>
+    <Midl Include="Pages\AboutPage.idl"><Filter>IDL\Pages</Filter></Midl>
+    <Midl Include="Pages\AppearancePage.idl"><Filter>IDL\Pages</Filter></Midl>
+    <Midl Include="Pages\DictionaryPage.idl"><Filter>IDL\Pages</Filter></Midl>
+    <Midl Include="Pages\InputPage.idl"><Filter>IDL\Pages</Filter></Midl>
+    <Midl Include="Pages\LearningPage.idl"><Filter>IDL\Pages</Filter></Midl>
+  </ItemGroup>
+  <ItemGroup>
+    <ClInclude Include="App.xaml.h"><Filter>Header Files</Filter></ClInclude>
+    <ClInclude Include="SettingsClient.h"><Filter>Header Files</Filter></ClInclude>
+    <ClInclude Include="MainWindow.xaml.h"><Filter>Header Files</Filter></ClInclude>
+    <ClInclude Include="SettingsSession.h"><Filter>Header Files</Filter></ClInclude>
+    <ClInclude Include="Pages\AboutPage.xaml.h"><Filter>Header Files</Filter></ClInclude>
+    <ClInclude Include="Pages\AppearancePage.xaml.h"><Filter>Header Files</Filter></ClInclude>
+    <ClInclude Include="Pages\DictionaryPage.xaml.h"><Filter>Header Files</Filter></ClInclude>
+    <ClInclude Include="Pages\InputPage.xaml.h"><Filter>Header Files</Filter></ClInclude>
+    <ClInclude Include="Pages\LearningPage.xaml.h"><Filter>Header Files</Filter></ClInclude>
+  </ItemGroup>
+  <ItemGroup>
+    <ClCompile Include="App.xaml.cpp"><Filter>Source Files</Filter></ClCompile>
+    <ClCompile Include="main.cpp"><Filter>Source Files</Filter></ClCompile>
+    <ClCompile Include="SettingsClient.cpp"><Filter>Source Files</Filter></ClCompile>
+    <ClCompile Include="..\WubiPinyinCore\WubiPinyinControlPayload.cpp"><Filter>Source Files</Filter></ClCompile>
+    <ClCompile Include="MainWindow.xaml.cpp"><Filter>Source Files</Filter></ClCompile>
+    <ClCompile Include="SettingsSession.cpp"><Filter>Source Files</Filter></ClCompile>
+    <ClCompile Include="..\WubiPinyinCore\WubiPinyinControlProtocol.cpp"><Filter>Source Files</Filter></ClCompile>
+    <ClCompile Include="Pages\AboutPage.xaml.cpp"><Filter>Source Files</Filter></ClCompile>
+    <ClCompile Include="Pages\AppearancePage.xaml.cpp"><Filter>Source Files</Filter></ClCompile>
+    <ClCompile Include="Pages\DictionaryPage.xaml.cpp"><Filter>Source Files</Filter></ClCompile>
+    <ClCompile Include="Pages\InputPage.xaml.cpp"><Filter>Source Files</Filter></ClCompile>
+    <ClCompile Include="Pages\LearningPage.xaml.cpp"><Filter>Source Files</Filter></ClCompile>
+  </ItemGroup>
+  <ItemGroup>
+    <Manifest Include="app.manifest"><Filter>Source Files</Filter></Manifest>
+    <None Include="README.md"><Filter>Source Files</Filter></None>
+    <None Include="build_release.bat"><Filter>Source Files</Filter></None>
+  </ItemGroup>
+</Project>

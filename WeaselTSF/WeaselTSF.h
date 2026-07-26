@@ -7,6 +7,7 @@
 class CCandidateList;
 class CLangBarItemButton;
 class CCompartmentEventSink;
+class CPasswordInputScopeEditSession;
 
 class WeaselTSF : public ITfTextInputProcessorEx,
                   public ITfThreadMgrEventSink,
@@ -153,6 +154,14 @@ class WeaselTSF : public ITfTextInputProcessorEx,
                         bool* const scroll_next);
 
  private:
+  friend class CPasswordInputScopeEditSession;
+
+  enum class PasswordInputScopeState {
+    kUnknown,
+    kNonSensitive,
+    kSensitive,
+  };
+
   /* ui callback functions private */
   void _SelectCandidateOnCurrentPage(const size_t index);
   void _HandleMouseHoverEvent(const size_t index);
@@ -166,6 +175,11 @@ class WeaselTSF : public ITfTextInputProcessorEx,
   DWORD _dwThreadFocusSinkCookie;
 
   BOOL _InitTextEditSink(com_ptr<ITfDocumentMgr> pDocMgr);
+  void _RequestPasswordInputScope(com_ptr<ITfContext> pContext);
+  void _ReadPasswordInputScope(ITfContext* pContext, TfEditCookie ecReadOnly);
+  void _SetPasswordInputScopeState(PasswordInputScopeState state);
+  void _SetPasswordInputProtection(bool enabled);
+  bool _ShouldBypassForPasswordInput() const;
 
   BOOL _InitKeyEventSink();
   void _UninitKeyEventSink();
@@ -227,6 +241,11 @@ class WeaselTSF : public ITfTextInputProcessorEx,
 
   /* IME status */
   weasel::Status _status;
+  weasel::Config _config;
+
+  bool _password_input_protection = true;
+  PasswordInputScopeState _password_input_scope_state =
+      PasswordInputScopeState::kUnknown;
 
   // guidatom for the display attibute.
   TfGuidAtom _gaDisplayAttributeInput;

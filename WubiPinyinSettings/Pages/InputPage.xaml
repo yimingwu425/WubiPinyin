@@ -1,0 +1,75 @@
+<Page
+    x:Class="WubiPinyinSettings.InputPage"
+    xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+    xmlns:controls="using:Microsoft.UI.Xaml.Controls"
+    Loaded="Page_Loaded">
+  <ScrollViewer HorizontalScrollBarVisibility="Disabled">
+    <StackPanel MaxWidth="720" Padding="32,20,32,36" Spacing="24">
+      <StackPanel Spacing="4">
+        <TextBlock Style="{StaticResource SettingsPageTitleStyle}" Text="输入" />
+        <TextBlock Style="{StaticResource SettingsSecondaryTextStyle}" Text="五笔·拼音" />
+      </StackPanel>
+
+      <controls:InfoBar x:Name="StatusBar" IsClosable="False" IsOpen="False" />
+
+      <StackPanel>
+        <TextBlock Style="{StaticResource SettingsSectionTitleStyle}" Text="输入方式" />
+        <Border Style="{StaticResource SettingsGroupBorderStyle}">
+          <StackPanel Spacing="12">
+            <Grid Style="{StaticResource SettingsRowStyle}">
+              <Grid.ColumnDefinitions>
+                <ColumnDefinition Width="*" />
+                <ColumnDefinition Width="Auto" />
+              </Grid.ColumnDefinitions>
+              <TextBlock VerticalAlignment="Center" Text="默认路由" />
+              <ComboBox x:Name="RouteBox" Grid.Column="1" MinWidth="180" SelectionChanged="Settings_Changed">
+                <ComboBoxItem Content="自动" Tag="auto" />
+                <ComboBoxItem Content="五笔" Tag="wubi" />
+                <ComboBoxItem Content="拼音" Tag="pinyin" />
+              </ComboBox>
+            </Grid>
+            <Grid Style="{StaticResource SettingsRowStyle}">
+              <Grid.ColumnDefinitions>
+                <ColumnDefinition Width="*" />
+                <ColumnDefinition Width="Auto" />
+              </Grid.ColumnDefinitions>
+              <TextBlock VerticalAlignment="Center" Text="候选页大小" />
+              <ComboBox x:Name="PageSizeBox" Grid.Column="1" MinWidth="180" SelectionChanged="Settings_Changed">
+                <ComboBoxItem Content="5" Tag="5" />
+                <ComboBoxItem Content="6" Tag="6" />
+                <ComboBoxItem Content="7" Tag="7" />
+                <ComboBoxItem Content="8" Tag="8" />
+                <ComboBoxItem Content="9" Tag="9" />
+              </ComboBox>
+            </Grid>
+          </StackPanel>
+        </Border>
+      </StackPanel>
+
+      <StackPanel>
+        <TextBlock Style="{StaticResource SettingsSectionTitleStyle}" Text="全拼规则" />
+        <Border Style="{StaticResource SettingsGroupBorderStyle}">
+          <StackPanel Spacing="12">
+            <Grid Style="{StaticResource SettingsRowStyle}">
+              <Grid.ColumnDefinitions>
+                <ColumnDefinition Width="*" />
+                <ColumnDefinition Width="Auto" />
+              </Grid.ColumnDefinitions>
+              <TextBlock VerticalAlignment="Center" Text="方案" />
+              <TextBlock Grid.Column="1" VerticalAlignment="Center" Style="{StaticResource SettingsSecondaryTextStyle}" Text="标准全拼" />
+            </Grid>
+            <Grid Style="{StaticResource SettingsRowStyle}">
+              <Grid.ColumnDefinitions>
+                <ColumnDefinition Width="*" />
+                <ColumnDefinition Width="Auto" />
+              </Grid.ColumnDefinitions>
+              <TextBlock VerticalAlignment="Center" Text="分词符" />
+              <TextBlock Grid.Column="1" VerticalAlignment="Center" Style="{StaticResource SettingsSecondaryTextStyle}" Text="'" />
+            </Grid>
+          </StackPanel>
+        </Border>
+      </StackPanel>
+    </StackPanel>
+  </ScrollViewer>
+</Page>

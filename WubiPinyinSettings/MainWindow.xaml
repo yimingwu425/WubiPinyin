@@ -1,0 +1,59 @@
+<Window
+    x:Class="WubiPinyinSettings.MainWindow"
+    xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+    xmlns:controls="using:Microsoft.UI.Xaml.Controls"
+    Title="五笔·拼音 设置">
+  <Grid Background="{ThemeResource SettingsWindowBackgroundBrush}">
+    <Grid.RowDefinitions>
+      <RowDefinition Height="48" />
+      <RowDefinition Height="*" />
+    </Grid.RowDefinitions>
+    <Grid x:Name="AppTitleBar" Grid.Row="0" Padding="20,0,0,0">
+      <TextBlock
+          VerticalAlignment="Center"
+          FontFamily="Segoe UI Variable"
+          FontSize="14"
+          FontWeight="SemiBold"
+          Text="五笔·拼音" />
+    </Grid>
+    <controls:NavigationView
+        x:Name="NavigationRoot"
+        Grid.Row="1"
+        AlwaysShowHeader="False"
+        IsBackButtonVisible="Collapsed"
+        IsSettingsVisible="False"
+        OpenPaneLength="220"
+        PaneDisplayMode="Left"
+        SelectionChanged="NavigationRoot_SelectionChanged">
+      <controls:NavigationView.MenuItems>
+        <controls:NavigationViewItem Content="输入" Tag="input">
+          <controls:NavigationViewItem.Icon>
+            <FontIcon FontFamily="Segoe Fluent Icons" Glyph="&#xE765;" />
+          </controls:NavigationViewItem.Icon>
+        </controls:NavigationViewItem>
+        <controls:NavigationViewItem Content="外观" Tag="appearance">
+          <controls:NavigationViewItem.Icon>
+            <FontIcon FontFamily="Segoe Fluent Icons" Glyph="&#xE706;" />
+          </controls:NavigationViewItem.Icon>
+        </controls:NavigationViewItem>
+        <controls:NavigationViewItem Content="用户词库" Tag="dictionary">
+          <controls:NavigationViewItem.Icon>
+            <FontIcon FontFamily="Segoe Fluent Icons" Glyph="&#xE8A5;" />
+          </controls:NavigationViewItem.Icon>
+        </controls:NavigationViewItem>
+        <controls:NavigationViewItem Content="学习与隐私" Tag="learning">
+          <controls:NavigationViewItem.Icon>
+            <FontIcon FontFamily="Segoe Fluent Icons" Glyph="&#xE72E;" />
+          </controls:NavigationViewItem.Icon>
+        </controls:NavigationViewItem>
+        <controls:NavigationViewItem Content="关于" Tag="about">
+          <controls:NavigationViewItem.Icon>
+            <FontIcon FontFamily="Segoe Fluent Icons" Glyph="&#xE946;" />
+          </controls:NavigationViewItem.Icon>
+        </controls:NavigationViewItem>
+      </controls:NavigationView.MenuItems>
+      <Frame x:Name="ContentFrame" />
+    </controls:NavigationView>
+  </Grid>
+</Window>

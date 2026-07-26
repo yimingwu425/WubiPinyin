@@ -1,0 +1,128 @@
+# Rime schema: WubiPinyin automatic Wubi86/full-Pinyin input
+# encoding: utf-8
+
+schema:
+  schema_id: hybrid_auto
+  name: 五笔·拼音
+  version: "0.1"
+  author:
+    - WubiPinyin
+  description: |
+    One composition, two translators: Wubi86 and full Pinyin.
+    Upstream table data is pinned in ../sources.lock.json.
+
+switches:
+  - name: ascii_mode
+    reset: 0
+    states: [ 中文, ABC ]
+    abbrev: [ 中, A ]
+  - name: full_shape
+    reset: 0
+    states: [ 半角, 全角 ]
+  - options: [ hybrid_auto, hybrid_wubi, hybrid_pinyin ]
+    reset: 0
+    states: [ 自动, 五笔, 拼音 ]
+    abbrev: [ 自, 五, 拼 ]
+  - name: ascii_punct
+    reset: 0
+    states: [ 中文标点, 西文标点 ]
+
+engine:
+  processors:
+    - ascii_composer
+    - recognizer
+    - key_binder
+    - speller
+    - punctuator
+    - selector
+    - navigator
+    - express_editor
+  segmentors:
+    - ascii_segmentor
+    - matcher
+    - abc_segmentor
+    - punct_segmentor
+    - fallback_segmentor
+  translators:
+    - punct_translator
+    - table_translator@wubi
+    - script_translator@pinyin
+  filters:
+    - hybrid_filter@hybrid
+
+speller:
+  alphabet: zyxwvutsrqponmlkjihgfedcba
+  delimiter: " '"
+  max_code_length: 0
+  auto_select: false
+
+menu:
+  page_size: 5
+
+wubi:
+  tag: abc
+  dictionary: hybrid_auto_wubi
+  prism: hybrid_auto_wubi
+  user_dict: hybrid_auto_wubi
+  enable_user_dict: true
+  enable_charset_filter: true
+  enable_sentence: true
+  enable_encoder: false
+  encode_commit_history: false
+  enable_completion: true
+
+pinyin:
+  tag: abc
+  dictionary: hybrid_auto_pinyin
+  prism: hybrid_auto_pinyin
+  user_dict: hybrid_auto_pinyin
+  enable_user_dict: true
+  enable_correction: false
+  strict_spelling: true
+  enable_completion: true
+  enable_word_completion: false
+  preedit_format:
+    - xform/([nl])v/$1ü/
+    - xform/([nl])ue/$1üe/
+    - xform/([jqxy])v/$1u/
+
+# `hybrid_filter` is registered by the WubiPinyin Rime extension. Both
+# translators deliberately share `abc`; completion candidates use language.
+hybrid:
+  tag: abc
+  route_options:
+    auto: hybrid_auto
+    wubi: hybrid_wubi
+    pinyin: hybrid_pinyin
+  candidate_source_masks:
+    wubi: 1
+    pinyin: 2
+  source_languages:
+    hybrid_auto_wubi: wubi
+    hybrid_auto_pinyin: pinyin
+  wubi_candidate_types: [ table, user_table ]
+  pinyin_candidate_types: [ phrase, user_phrase, sentence ]
+  source_labels:
+    wubi: 五笔
+    pinyin: 拼音
+  deduplicate: true
+  passthrough_unclassified: true
+  ranking_window: 64
+
+punctuator:
+  import_preset: default
+
+key_binder:
+  bindings:
+    - when: always
+      accept: Control+Shift+a
+      set_option: hybrid_auto
+    - when: always
+      accept: Control+Shift+w
+      set_option: hybrid_wubi
+    - when: always
+      accept: Control+Shift+p
+      set_option: hybrid_pinyin
+
+recognizer:
+  import_preset: default

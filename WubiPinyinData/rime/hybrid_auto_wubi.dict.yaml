@@ -1,0 +1,11 @@
+# Rime dictionary: WubiPinyin Wubi86 aggregate
+# encoding: utf-8
+
+---
+name: hybrid_auto_wubi
+version: "0.1"
+sort: by_weight
+import_tables:
+  - wubi86
+  - hybrid_auto_wubi_user
+...

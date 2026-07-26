@@ -41,7 +41,9 @@
   <ImportGroup Label="PropertySheets" Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">
     <Import Project="$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props" Condition="exists('$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props')" Label="LocalAppDataPlatform" />
   </ImportGroup>
-  <PropertyGroup Label="UserMacros" />
+  <PropertyGroup Label="UserMacros">
+    <TargetName>WubiPinyinSetup</TargetName>
+  </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">
     <LinkIncremental>false</LinkIncremental>
     <OutDir>$(SolutionDir)output\</OutDir>
@@ -67,7 +69,7 @@
     <Link>
       <SubSystem>Windows</SubSystem>
       <AdditionalDependencies>Kernel32.lib;%(AdditionalDependencies)</AdditionalDependencies>
-      <OutputFile>$(SolutionDir)output\$(ProjectName)$(TargetExt)</OutputFile>
+      <OutputFile>$(SolutionDir)output\$(TargetName)$(TargetExt)</OutputFile>
       <UACExecutionLevel>AsInvoker</UACExecutionLevel>
       <LinkTimeCodeGeneration>UseLinkTimeCodeGeneration</LinkTimeCodeGeneration>
     </Link>
@@ -109,7 +111,7 @@
       <SubSystem>Windows</SubSystem>
       <GenerateDebugInformation>true</GenerateDebugInformation>
       <AdditionalDependencies>Kernel32.lib;%(AdditionalDependencies)</AdditionalDependencies>
-      <OutputFile>$(SolutionDir)output\$(ProjectName)$(TargetExt)</OutputFile>
+      <OutputFile>$(SolutionDir)output\$(TargetName)$(TargetExt)</OutputFile>
       <UACExecutionLevel>AsInvoker</UACExecutionLevel>
       <LinkTimeCodeGeneration>
       </LinkTimeCodeGeneration>

@@ -27,6 +27,21 @@
     <ClCompile Include="WeaselServerApp.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
+    <ClCompile Include="BrokerControlServer.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="..\WubiPinyinCore\WubiPinyinCore.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="..\WubiPinyinCore\WubiPinyinControlProtocol.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="..\WubiPinyinCore\WubiPinyinControlPayload.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="..\WubiPinyinCore\WubiPinyinBrokerControlDispatcher.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
     <ClCompile Include="SystemTraySDK.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
@@ -42,6 +57,9 @@
       <Filter>Header Files</Filter>
     </ClInclude>
     <ClInclude Include="WeaselServerApp.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="BrokerControlServer.h">
       <Filter>Header Files</Filter>
     </ClInclude>
     <ClInclude Include="SystemTraySDK.h">

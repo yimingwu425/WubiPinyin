@@ -1,0 +1,33 @@
+{
+  "lock_format": 1,
+  "sources": [
+    {
+      "name": "rime-wubi",
+      "repository": "https://github.com/rime/rime-wubi.git",
+      "commit": "152a0d3f3efe40cae216d1e3b338242446848d07",
+      "license": "LGPL-3.0-only",
+      "license_file": "LICENSE",
+      "authors_file": "AUTHORS",
+      "files": [
+        {
+          "path": "wubi86.dict.yaml",
+          "sha256": "f833d86b72341fe82e069a425b6625f29ef85f1bc0f34f6fb7975fe514888b5a"
+        }
+      ]
+    },
+    {
+      "name": "rime-pinyin-simp",
+      "repository": "https://github.com/rime/rime-pinyin-simp.git",
+      "commit": "0c6861ef7420ee780270ca6d993d18d4101049d0",
+      "license": "Apache-2.0",
+      "license_file": "LICENSE",
+      "authors_file": "AUTHORS",
+      "files": [
+        {
+          "path": "pinyin_simp.dict.yaml",
+          "sha256": "e341598343a0f0f2035bb1aafc34a7f3bb7887deeecb3f60796262aaa2983e6b"
+        }
+      ]
+    }
+  ]
+}

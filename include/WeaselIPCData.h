@@ -1,5 +1,6 @@
 ﻿#pragma once
 
+#include <cstdint>
 #include <string>
 #include <vector>
 #include <boost/serialization/vector.hpp>
@@ -8,6 +9,16 @@
 namespace weasel {
 
 enum TextAttributeType { NONE = 0, HIGHLIGHTED, LAST_TYPE };
+
+// This is a transport contract, not a display string. `source_masks` in a
+// CandidateInfo is parallel to `candies` and lets the UI decide whether a
+// compact source marker is useful for the current page.
+enum CandidateSourceMask : std::uint8_t {
+  CANDIDATE_SOURCE_NONE = 0,
+  CANDIDATE_SOURCE_WUBI = 1 << 0,
+  CANDIDATE_SOURCE_PINYIN = 1 << 1,
+  CANDIDATE_SOURCE_BOTH = CANDIDATE_SOURCE_WUBI | CANDIDATE_SOURCE_PINYIN,
+};
 
 struct TextRange {
   TextRange() : start(0), end(0), cursor(-1) {}
@@ -82,13 +93,14 @@ struct CandidateInfo {
     is_last_page = false;
     candies.clear();
     labels.clear();
+    source_masks.clear();
   }
   bool empty() const { return candies.empty(); }
   bool operator==(const CandidateInfo& ci) {
     if (currentPage != ci.currentPage || totalPages != ci.totalPages ||
         highlighted != ci.highlighted || is_last_page != ci.is_last_page ||
         notequal(candies, ci.candies) || notequal(comments, ci.comments) ||
-        notequal(labels, ci.labels))
+        notequal(labels, ci.labels) || source_masks != ci.source_masks)
       return false;
     return true;
   }
@@ -96,7 +108,7 @@ struct CandidateInfo {
     if (currentPage != ci.currentPage || totalPages != ci.totalPages ||
         highlighted != ci.highlighted || is_last_page != ci.is_last_page ||
         notequal(candies, ci.candies) || notequal(comments, ci.comments) ||
-        notequal(labels, ci.labels))
+        notequal(labels, ci.labels) || source_masks != ci.source_masks)
       return true;
     return false;
   }
@@ -116,6 +128,7 @@ struct CandidateInfo {
   std::vector<Text> candies;
   std::vector<Text> comments;
   std::vector<Text> labels;
+  std::vector<std::uint8_t> source_masks;
 };
 
 struct Context {
@@ -187,9 +200,13 @@ struct Status {
 
 // 用於向前端告知設置信息
 struct Config {
-  Config() : inline_preedit(false) {}
-  void reset() { inline_preedit = false; }
+  Config() : inline_preedit(false), password_input_protection(true) {}
+  void reset() {
+    inline_preedit = false;
+    password_input_protection = true;
+  }
   bool inline_preedit;
+  bool password_input_protection;
 };
 
 struct UIStyle {
@@ -513,6 +530,7 @@ void serialize(Archive& ar,
   ar & s.candies;
   ar & s.comments;
   ar & s.labels;
+  ar & s.source_masks;
 }
 template <typename Archive>
 void serialize(Archive& ar, weasel::Text& s, const unsigned int version) {

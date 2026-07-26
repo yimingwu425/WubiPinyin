@@ -31,7 +31,7 @@ HKL FindIME(LANGID langid) {
         ret = RegQueryValueExW(hSubKey, L"Ime File", NULL, &type, (LPBYTE)data,
                                &size);
         if (ret == ERROR_SUCCESS && type == REG_SZ &&
-            _wcsicmp(data, L"weasel.ime") == 0)
+            _wcsicmp(data, L"WubiPinyin.ime") == 0)
           hKL = (HKL)id;
       }
       RegCloseKey(hSubKey);
@@ -49,18 +49,6 @@ BOOL RegisterProfiles() {
   CComPtr<ITfInputProcessorProfileMgr> pInputProcessorProfileMgr;
   CHECK_HR(pInputProcessorProfileMgr.CoCreateInstance(
       CLSID_TF_InputProcessorProfiles, NULL, CLSCTX_ALL));
-  WCHAR szProfile[100];
-  std::wstring profile{};
-  DWORD dwSize = GetEnvironmentVariable(L"TEXTSERVICE_PROFILE", szProfile,
-                                        ARRAYSIZE(szProfile));
-  if (dwSize > 0) {
-    profile = szProfile;
-  }
-  BOOL hansEnable = (profile == L"hans");
-  BOOL hantEnable = (profile == L"hant");
-  // fallback hans enable
-  hansEnable = hansEnable || (!hantEnable && !hansEnable);
-
   const auto text_service_desc = get_weasel_ime_name();
   const WCHAR* text_service_desc_str = text_service_desc.c_str();
   ULONG text_service_desc_len = text_service_desc.size() * sizeof(wchar_t);
@@ -76,14 +64,8 @@ BOOL RegisterProfiles() {
         hkl, 0, enable, 0);
   };
 
-  const auto hkl_hans = FindIME(TEXTSERVICE_LANGID_HANS);
-  const auto hkl_hant = FindIME(TEXTSERVICE_LANGID_HANT);
-  CHECK_HR(register_profile(TEXTSERVICE_LANGID_HANS, hkl_hans, hansEnable));
-  CHECK_HR(register_profile(TEXTSERVICE_LANGID_HANT, hkl_hant, hantEnable));
-  // WeaselIME not support these languages, so HKL is NULL
-  CHECK_HR(register_profile(TEXTSERVICE_LANGID_HONGKONG, NULL, false));
-  CHECK_HR(register_profile(TEXTSERVICE_LANGID_MACAU, NULL, false));
-  CHECK_HR(register_profile(TEXTSERVICE_LANGID_SINGAPORE, NULL, false));
+  CHECK_HR(register_profile(TEXTSERVICE_LANGID_HANS,
+                            FindIME(TEXTSERVICE_LANGID_HANS), true));
 #undef CHECK_HR
 
   return TRUE;
@@ -99,23 +81,16 @@ void UnregisterProfiles() {
                                                  c_guidProfile, 0);
   };
   unregister_profile(TEXTSERVICE_LANGID_HANS);
-  unregister_profile(TEXTSERVICE_LANGID_HANT);
-  unregister_profile(TEXTSERVICE_LANGID_HONGKONG);
-  unregister_profile(TEXTSERVICE_LANGID_MACAU);
-  unregister_profile(TEXTSERVICE_LANGID_SINGAPORE);
 }
 
 const GUID SupportCategories0[] = {
     GUID_TFCAT_CATEGORY_OF_TIP, GUID_TFCAT_TIP_KEYBOARD,
-    // GUID_TFCAT_TIP_SPEECH,
-    // GUID_TFCAT_TIP_HANDWRITING,
-    GUID_TFCAT_TIPCAP_SECUREMODE, GUID_TFCAT_TIPCAP_UIELEMENTENABLED,
-    GUID_TFCAT_TIPCAP_INPUTMODECOMPARTMENT, GUID_TFCAT_TIPCAP_COMLESS,
-    GUID_TFCAT_TIPCAP_WOW16, GUID_TFCAT_TIPCAP_IMMERSIVESUPPORT,
-    GUID_TFCAT_TIPCAP_SYSTRAYSUPPORT, GUID_TFCAT_PROP_AUDIODATA,
-    GUID_TFCAT_PROP_INKDATA, GUID_TFCAT_PROPSTYLE_CUSTOM,
-    GUID_TFCAT_PROPSTYLE_STATIC, GUID_TFCAT_PROPSTYLE_STATICCOMPACT,
-    GUID_TFCAT_DISPLAYATTRIBUTEPROVIDER, GUID_TFCAT_DISPLAYATTRIBUTEPROPERTY};
+    GUID_TFCAT_TIPCAP_UIELEMENTENABLED,
+    GUID_TFCAT_TIPCAP_INPUTMODECOMPARTMENT,
+    GUID_TFCAT_TIPCAP_IMMERSIVESUPPORT,
+    GUID_TFCAT_TIPCAP_SYSTRAYSUPPORT,
+    GUID_TFCAT_DISPLAYATTRIBUTEPROVIDER,
+    GUID_TFCAT_DISPLAYATTRIBUTEPROPERTY};
 
 BOOL RegisterCategories() {
   CComPtr<ITfCategoryMgr> pCategoryMgr = NULL;
@@ -215,14 +190,16 @@ BOOL RegisterServer() {
 #ifdef _M_ARM64
       {
         // On ARM64 we use ARM64X redirection DLL.
-        // When loaded, weasel.dll will be redirected to weaselARM64.dll on
-        // ARM64 processes, and weaselx64.dll on x64 processes.
+        // When loaded, WubiPinyin.dll will be redirected to
+        // WubiPinyinARM64.dll on ARM64 processes, and WubiPinyinx64.dll on
+        // x64 processes.
         //
-        // But GetModuleFileNameA will return the actual loaded DLL name aka
-        // weaselARM64.dll Rewrite the path to point to the redirector.
+        // But GetModuleFileNameA returns the actual loaded DLL name, so
+        // rewrite the path to point to the redirector.
 
         char wrapperPath[MAX_PATH];
-        StringCbCatA(achFileName, MAX_PATH, "\\..\\weasel.dll");
+        StringCbCatA(achFileName, MAX_PATH,
+                     "\\..\\" WUBIPINYIN_TSF_FILE_NAME_A);
         GetFullPathNameA(achFileName, MAX_PATH, wrapperPath, NULL);
         memcpy(achFileName, wrapperPath, MAX_PATH);
       }

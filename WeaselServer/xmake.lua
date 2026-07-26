@@ -1,9 +1,10 @@
 target("WeaselServer")
   set_kind("binary")
+  set_filename("WubiPinyinServer.exe")
   add_files("./*.cpp")
   add_rules("add_rcfiles", "subwin")
   add_links("imm32", "kernel32", "rime")
-  add_deps("WeaselUI", "WeaselIPC", "RimeWithWeasel", "WeaselIPCServer")
+  add_deps("WeaselUI", "WeaselIPC", "RimeWithWeasel", "WubiPinyinCore", "WeaselIPCServer")
 
   add_files("$(projectdir)/PerMonitorHighDPIAware.manifest")
   add_ldflags("/DEBUG /OPT:REF /OPT:ICF /LARGEADDRESSAWARE /ERRORREPORT:QUEUE")
@@ -17,11 +18,10 @@ target("WeaselServer")
   end)
   after_build(function(target)
     if is_arch("x86") then
-      os.cp(path.join(target:targetdir(), "WeaselServer.exe"), "$(projectdir)/output/Win32")
-      os.cp(path.join(target:targetdir(), "WeaselServer.pdb"), "$(projectdir)/output/Win32")
+      os.cp(path.join(target:targetdir(), "WubiPinyinServer.exe"), "$(projectdir)/output/Win32")
+      os.cp(path.join(target:targetdir(), "WubiPinyinServer.pdb"), "$(projectdir)/output/Win32")
     else
-      os.cp(path.join(target:targetdir(), "WeaselServer.exe"), "$(projectdir)/output")
-      os.cp(path.join(target:targetdir(), "WeaselServer.pdb"), "$(projectdir)/output")
+      os.cp(path.join(target:targetdir(), "WubiPinyinServer.exe"), "$(projectdir)/output")
+      os.cp(path.join(target:targetdir(), "WubiPinyinServer.pdb"), "$(projectdir)/output")
     end
   end)
-

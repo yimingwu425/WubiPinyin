@@ -1,8 +1,10 @@
 ﻿#include "stdafx.h"
 #include "WeaselServerImpl.h"
+#include <atomic>
 #include <mutex>
 #include <Windows.h>
 #include <resource.h>
+#include <WeaselConstants.h>
 #include <WeaselUtility.h>
 
 namespace weasel {
@@ -12,7 +14,7 @@ class PipeServer : public PipeChannel<DWORD, PipeMessage> {
   using Respond = std::function<void(Msg)>;
   using ServerHandler = std::function<void(PipeMessage, Respond)>;
 
-  PipeServer(std::wstring&& pn_cmd, SECURITY_ATTRIBUTES* s);
+  PipeServer(std::wstring&& pn_cmd, SecurityAttribute& security);
 
  public:
   void Listen(ServerHandler const& handler);
@@ -21,6 +23,8 @@ class PipeServer : public PipeChannel<DWORD, PipeMessage> {
 
  private:
   void _ProcessPipeThread(HANDLE pipe, ServerHandler const& handler);
+
+  SecurityAttribute& security;
 };
 }  // namespace weasel
 
@@ -28,10 +32,35 @@ using namespace weasel;
 
 extern CAppModule _Module;
 
+namespace {
+
+struct PendingServerTask {
+  explicit PendingServerTask(std::function<void()> callback)
+      : callback(std::move(callback)), completed(::CreateEventW(
+                                       NULL, TRUE, FALSE, NULL)) {}
+
+  ~PendingServerTask() {
+    if (completed != NULL) {
+      ::CloseHandle(completed);
+    }
+  }
+
+  std::function<void()> callback;
+  HANDLE completed;
+  std::atomic_bool cancelled = false;
+};
+
+std::mutex g_api_mutex;
+
+}  // namespace
+
 ServerImpl::ServerImpl()
-    : m_pRequestHandler(NULL),
+    : sa(),
+      channel(std::make_unique<PipeServer>(GetPipeName(), sa)),
+      m_pRequestHandler(NULL),
+      m_hUser32Module(NULL),
       m_darkMode(IsUserDarkMode()),
-      channel(std::make_unique<PipeServer>(GetPipeName(), sa.get_attr())) {
+      m_server_thread_id(0) {
   m_hUser32Module = GetModuleHandle(_T("user32.dll"));
 }
 
@@ -131,6 +160,33 @@ LRESULT ServerImpl::OnCommand(UINT uMsg,
   return 0;
 }
 
+LRESULT ServerImpl::OnServerTask(UINT uMsg,
+                                 WPARAM wParam,
+                                 LPARAM lParam,
+                                 BOOL& bHandled) {
+  auto posted_task = std::unique_ptr<std::shared_ptr<PendingServerTask>>(
+      reinterpret_cast<std::shared_ptr<PendingServerTask>*>(lParam));
+  if (!posted_task || !*posted_task) {
+    bHandled = TRUE;
+    return 0;
+  }
+  const std::shared_ptr<PendingServerTask> task = *posted_task;
+  try {
+    std::lock_guard guard(g_api_mutex);
+    if (!task->cancelled.load(std::memory_order_acquire) && task->callback) {
+      task->callback();
+    }
+  } catch (...) {
+    // The control-pipe callback owns its reply state and turns exceptions into
+    // a bounded error response. Never allow a task exception into WTL.
+  }
+  if (task->completed != NULL) {
+    ::SetEvent(task->completed);
+  }
+  bHandled = TRUE;
+  return 0;
+}
+
 DWORD ServerImpl::OnCommand(WEASEL_IPC_COMMAND uMsg,
                             DWORD wParam,
                             DWORD lParam) {
@@ -140,7 +196,11 @@ DWORD ServerImpl::OnCommand(WEASEL_IPC_COMMAND uMsg,
 }
 
 HWND ServerImpl::Start() {
-  std::wstring instanceName = L"(WEASEL)Furandōru-Sukāretto-";
+  if (!sa.valid()) {
+    return 0;
+  }
+
+  std::wstring instanceName = WUBIPINYIN_SERVER_MUTEX_PREFIX;
   instanceName += getUsername();
   HANDLE hMutexOneInstance = ::CreateMutex(NULL, FALSE, instanceName.c_str());
   bool areYouOK = (::GetLastError() == ERROR_ALREADY_EXISTS ||
@@ -150,6 +210,7 @@ HWND ServerImpl::Start() {
     return 0;  // assure single instance
   }
 
+  m_server_thread_id = ::GetCurrentThreadId();
   HWND hwnd = Create(NULL);
 
   return hwnd;
@@ -161,8 +222,6 @@ int ServerImpl::Stop() {
   PostMessage(WM_QUIT);
   return 0;
 }
-
-static std::mutex g_api_mutex;
 
 int ServerImpl::Run() {
   // This workaround causes a VC internal error:
@@ -183,6 +242,35 @@ int ServerImpl::Run() {
   int nRet = theLoop.Run();
   _Module.RemoveMessageLoop();
   return nRet;
+}
+
+bool ServerImpl::RunOnServerThread(std::function<void()> task,
+                                   DWORD timeout_ms) {
+  if (!task || !IsWindow() || timeout_ms == 0) {
+    return false;
+  }
+  if (::GetCurrentThreadId() == m_server_thread_id) {
+    std::lock_guard guard(g_api_mutex);
+    task();
+    return true;
+  }
+
+  auto pending = std::make_shared<PendingServerTask>(std::move(task));
+  if (pending->completed == NULL) {
+    return false;
+  }
+  auto* posted_task = new std::shared_ptr<PendingServerTask>(pending);
+  if (!::PostMessage(m_hWnd, WEASEL_IPC_SERVER_TASK_MESSAGE, 0,
+                     reinterpret_cast<LPARAM>(posted_task))) {
+    delete posted_task;
+    return false;
+  }
+  const bool completed =
+      ::WaitForSingleObject(pending->completed, timeout_ms) == WAIT_OBJECT_0;
+  if (!completed) {
+    pending->cancelled.store(true, std::memory_order_release);
+  }
+  return completed;
 }
 
 DWORD ServerImpl::OnEcho(WEASEL_IPC_COMMAND uMsg, DWORD wParam, DWORD lParam) {
@@ -402,8 +490,10 @@ void ServerImpl::HandlePipeMessage(PipeMessage pipe_msg, _Resp resp) {
   resp(result);
 }
 
-PipeServer::PipeServer(std::wstring&& pn_cmd, SECURITY_ATTRIBUTES* s)
-    : PipeChannel(std::move(pn_cmd), s) {}
+PipeServer::PipeServer(std::wstring&& pn_cmd,
+                       SecurityAttribute& security)
+    : PipeChannel(std::move(pn_cmd), security.get_attr()),
+      security(security) {}
 
 void PipeServer::Listen(ServerHandler const& handler) {
   for (;;) {
@@ -411,6 +501,10 @@ void PipeServer::Listen(ServerHandler const& handler) {
     try {
       boost::this_thread::interruption_point();
       pipe = _ConnectServerPipe(pname);
+      if (!security.IsCurrentUserClient(pipe)) {
+        _FinalizePipe(pipe);
+        continue;
+      }
       boost::thread th(
           [&handler, pipe, this] { _ProcessPipeThread(pipe, handler); });
     } catch (DWORD ex) {
@@ -456,6 +550,10 @@ int Server::Stop() {
 
 int Server::Run() {
   return m_pImpl->Run();
+}
+
+bool Server::RunOnServerThread(std::function<void()> task, DWORD timeout_ms) {
+  return m_pImpl->RunOnServerThread(std::move(task), timeout_ms);
 }
 
 void Server::SetRequestHandler(RequestHandler* pHandler) {

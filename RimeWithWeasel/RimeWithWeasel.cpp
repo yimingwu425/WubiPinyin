@@ -6,6 +6,7 @@
 #include <WeaselUtility.h>
 
 #include <filesystem>
+#include <cstdint>
 #include <map>
 #include <array>
 #include <vector>
@@ -40,6 +41,10 @@ RimeWithWeaselHandler::RimeWithWeaselHandler(UI* ui)
       m_disabled(true),
       m_current_dark_mode(false),
       m_global_ascii_mode(false),
+      m_default_hybrid_route("auto"),
+      m_learning_enabled(true),
+      m_show_candidate_source_labels(true),
+      m_password_input_protection(true),
       m_show_notifications_time(1200),
       _UpdateUICallback(NULL) {
   m_ui->InServer() = true;
@@ -97,7 +102,7 @@ void RimeWithWeaselHandler::_Setup() {
   weasel_traits.distribution_name = distribution_name.c_str();
   weasel_traits.distribution_code_name = WEASEL_CODE_NAME;
   weasel_traits.distribution_version = WEASEL_VERSION;
-  weasel_traits.app_name = "rime.weasel";
+  weasel_traits.app_name = "rime.wubipinyin";
   std::string log_dir = WeaselLogPath().u8string();
   weasel_traits.log_dir = log_dir.c_str();
   rime_api->setup(&weasel_traits);
@@ -445,6 +450,7 @@ void RimeWithWeaselHandler::_ReadClientInfo(WeaselSessionId ipc_id,
   rime_api->set_option(session_id, "inline_preedit", Bool(inline_preedit));
   // show soft cursor on weasel panel but not inline
   rime_api->set_option(session_id, "soft_cursor", Bool(!inline_preedit));
+  _ApplyHybridOptions(session_id, m_default_hybrid_route);
 }
 
 void RimeWithWeaselHandler::_GetCandidateInfo(CandidateInfo& cinfo,
@@ -452,7 +458,17 @@ void RimeWithWeaselHandler::_GetCandidateInfo(CandidateInfo& cinfo,
   cinfo.candies.resize(ctx.menu.num_candidates);
   cinfo.comments.resize(ctx.menu.num_candidates);
   cinfo.labels.resize(ctx.menu.num_candidates);
+  cinfo.source_masks.resize(ctx.menu.num_candidates);
+  bool has_wubi = false;
+  bool has_pinyin = false;
   for (int i = 0; i < ctx.menu.num_candidates; ++i) {
+    const auto raw_source_mask =
+        reinterpret_cast<uintptr_t>(ctx.menu.candidates[i].reserved);
+    const auto source_mask = static_cast<std::uint8_t>(
+        raw_source_mask & CANDIDATE_SOURCE_BOTH);
+    cinfo.source_masks[i] = source_mask;
+    has_wubi = has_wubi || (source_mask & CANDIDATE_SOURCE_WUBI) != 0;
+    has_pinyin = has_pinyin || (source_mask & CANDIDATE_SOURCE_PINYIN) != 0;
     cinfo.candies[i].str = escape_string(u8tow(ctx.menu.candidates[i].text));
     if (ctx.menu.candidates[i].comment) {
       cinfo.comments[i].str =
@@ -465,6 +481,32 @@ void RimeWithWeaselHandler::_GetCandidateInfo(CandidateInfo& cinfo,
           escape_string(std::wstring(1, ctx.menu.select_keys[i]));
     } else {
       cinfo.labels[i].str = std::to_wstring((i + 1) % 10);
+    }
+  }
+  const bool show_source_labels =
+      m_show_candidate_source_labels && has_wubi && has_pinyin;
+  if (show_source_labels) {
+    for (int i = 0; i < ctx.menu.num_candidates; ++i) {
+      std::wstring label;
+      switch (cinfo.source_masks[i]) {
+        case CANDIDATE_SOURCE_WUBI:
+          label = L"[\u4e94\u7b14]";
+          break;
+        case CANDIDATE_SOURCE_PINYIN:
+          label = L"[\u62fc\u97f3]";
+          break;
+        case CANDIDATE_SOURCE_BOTH:
+          label = L"[\u4e94\u7b14\u00b7\u62fc\u97f3]";
+          break;
+        default:
+          break;
+      }
+      if (!label.empty()) {
+        if (!cinfo.comments[i].str.empty()) {
+          cinfo.comments[i].str.append(L" ");
+        }
+        cinfo.comments[i].str.append(label);
+      }
     }
   }
   cinfo.highlighted = ctx.menu.highlighted_candidate_index;
@@ -502,12 +544,103 @@ void RimeWithWeaselHandler::SetOption(WeaselSessionId ipc_id,
   }
 }
 
+void RimeWithWeaselHandler::SetDefaultHybridRoute(const std::string& route) {
+  if (route == "wubi" || route == "pinyin") {
+    m_default_hybrid_route = route;
+  } else {
+    m_default_hybrid_route = "auto";
+  }
+  for (const auto& [ipc_id, session] : m_session_status_map) {
+    if (ipc_id && session.session_id) {
+      _ApplyHybridOptions(session.session_id, m_default_hybrid_route);
+    }
+  }
+}
+
+bool RimeWithWeaselHandler::SetHybridRoute(WeaselSessionId ipc_id,
+                                           const std::string& route) {
+  const auto found = m_session_status_map.find(ipc_id);
+  if (found == m_session_status_map.end() || !found->second.session_id) {
+    return false;
+  }
+  if (route != "auto" && route != "wubi" && route != "pinyin") {
+    return false;
+  }
+  _ApplyHybridOptions(found->second.session_id, route);
+  _UpdateUI(ipc_id);
+  return true;
+}
+
+bool RimeWithWeaselHandler::CommitRawInput(WeaselSessionId ipc_id) {
+  const auto found = m_session_status_map.find(ipc_id);
+  if (m_disabled || found == m_session_status_map.end() ||
+      !found->second.session_id) {
+    return false;
+  }
+  // `express_editor` maps Return to CommitRawInput. Sending it through Rime
+  // preserves the schema's ordinary raw-input semantics and never selects a
+  // candidate, so it does not create a learning event.
+  const Bool handled =
+      rime_api->process_key(found->second.session_id, ibus::Return, 0);
+  _UpdateUI(ipc_id);
+  return handled != False;
+}
+
+void RimeWithWeaselHandler::SetLearningEnabled(bool enabled) {
+  m_learning_enabled = enabled;
+  for (const auto& [ipc_id, session] : m_session_status_map) {
+    if (ipc_id && session.session_id) {
+      rime_api->set_option(session.session_id, "disable_learning",
+                           Bool(!m_learning_enabled));
+    }
+  }
+}
+
+void RimeWithWeaselHandler::SetShowCandidateSourceLabels(bool enabled) {
+  m_show_candidate_source_labels = enabled;
+  if (m_active_session) {
+    _UpdateUI(m_active_session);
+  }
+}
+
+void RimeWithWeaselHandler::SetPasswordInputProtection(bool enabled) {
+  if (m_password_input_protection == enabled) {
+    return;
+  }
+
+  // A setting transition must not leave a composition that could be committed
+  // under the previous privacy policy. The TSF client receives the new value
+  // in its next response and clears its mirrored composition as well.
+  if (!m_disabled) {
+    for (const auto& [ipc_id, session] : m_session_status_map) {
+      if (ipc_id && session.session_id) {
+        rime_api->clear_composition(session.session_id);
+      }
+    }
+  }
+  m_password_input_protection = enabled;
+  if (!m_disabled && m_active_session) {
+    _UpdateUI(m_active_session);
+  }
+}
+
+void RimeWithWeaselHandler::_ApplyHybridOptions(
+    RimeSessionId session_id,
+    const std::string& route) const {
+  rime_api->set_option(session_id, "hybrid_auto", Bool(route == "auto"));
+  rime_api->set_option(session_id, "hybrid_wubi", Bool(route == "wubi"));
+  rime_api->set_option(session_id, "hybrid_pinyin",
+                       Bool(route == "pinyin"));
+  rime_api->set_option(session_id, "disable_learning",
+                       Bool(!m_learning_enabled));
+}
+
 void RimeWithWeaselHandler::OnUpdateUI(std::function<void()> const& cb) {
   _UpdateUICallback = cb;
 }
 
 bool RimeWithWeaselHandler::_IsDeployerRunning() {
-  HANDLE hMutex = CreateMutex(NULL, TRUE, L"WeaselDeployerMutex");
+  HANDLE hMutex = CreateMutex(NULL, TRUE, WUBIPINYIN_DEPLOYER_MUTEX);
   bool deployer_detected = hMutex && GetLastError() == ERROR_ALREADY_EXISTS;
   if (hMutex) {
     CloseHandle(hMutex);
@@ -688,14 +821,16 @@ bool RimeWithWeaselHandler::_ShowMessage(Context& ctx, Status& status) {
     else if (m_message_value == "failure") {
       if (GetThreadUILanguage() ==
           MAKELANGID(LANG_CHINESE, SUBLANG_CHINESE_TRADITIONAL))
-        tips = L"有錯誤，請查看日誌 %TEMP%\\rime.weasel\\rime.weasel.*.INFO";
+        tips = L"有錯誤，請查看日誌 "
+               L"%TEMP%\\rime.wubipinyin\\rime.wubipinyin.*.INFO";
       else if (GetThreadUILanguage() ==
                MAKELANGID(LANG_CHINESE, SUBLANG_CHINESE_SIMPLIFIED))
-        tips = L"有错误，请查看日志 %TEMP%\\rime.weasel\\rime.weasel.*.INFO";
+        tips = L"有错误，请查看日志 "
+               L"%TEMP%\\rime.wubipinyin\\rime.wubipinyin.*.INFO";
       else
         tips =
             L"There is an error, please check the logs "
-            L"%TEMP%\\rime.weasel\\rime.weasel.*.INFO";
+            L"%TEMP%\\rime.wubipinyin\\rime.wubipinyin.*.INFO";
     }
   } else if (m_message_type == "schema") {
     tips = /*L"【" + */ status.schema_name /* + L"】"*/;
@@ -897,6 +1032,9 @@ bool RimeWithWeaselHandler::_Respond(WeaselSessionId ipc_id, EatLine eat) {
   actions.push_back("config");
   body.append(L"config.inline_preedit=")
       .append(std::to_wstring((int)session_status.style.inline_preedit))
+      .append(L"\n")
+      .append(L"config.password_input_protection=")
+      .append(std::to_wstring((int)m_password_input_protection))
       .append(L"\n");
 
   // style

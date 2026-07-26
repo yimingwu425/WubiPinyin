@@ -57,22 +57,14 @@ static std::wstring install_dir() {
 static int CustomInstall(bool installing) {
   bool hant = false;
   bool silent = false;
-  std::wstring user_dir;
 
-  const WCHAR KEY[] = L"Software\\Rime\\Weasel";
+  const WCHAR* KEY = WEASEL_REG_KEY;
   HKEY hKey;
   LSTATUS ret = RegOpenKey(HKEY_CURRENT_USER, KEY, &hKey);
   if (ret == ERROR_SUCCESS) {
-    WCHAR value[MAX_PATH];
-    DWORD len = sizeof(value);
     DWORD type = 0;
     DWORD data = 0;
-    ret =
-        RegQueryValueEx(hKey, L"RimeUserDir", NULL, &type, (LPBYTE)value, &len);
-    if (ret == ERROR_SUCCESS && type == REG_SZ) {
-      user_dir = value;
-    }
-    len = sizeof(data);
+    DWORD len = sizeof(data);
     ret = RegQueryValueEx(hKey, L"Hant", NULL, &type, (LPBYTE)&data, &len);
     if (ret == ERROR_SUCCESS && type == REG_DWORD) {
       hant = (data != 0);
@@ -86,13 +78,11 @@ static int CustomInstall(bool installing) {
     InstallOptionsDialog dlg;
     dlg.installed = _has_installed;
     dlg.hant = hant;
-    dlg.user_dir = user_dir;
     if (IDOK != dlg.DoModal()) {
       if (!installing)
         return 1;  // aborted by user
     } else {
       hant = dlg.hant;
-      user_dir = dlg.user_dir;
       _has_installed = dlg.installed;
     }
   }
@@ -100,20 +90,7 @@ static int CustomInstall(bool installing) {
     if (0 != install(hant, silent))
       return 1;
 
-  if (user_dir.empty()) {
-    // default user dir %APPDATA%\Rime
-    WCHAR _path[MAX_PATH] = {0};
-    ExpandEnvironmentStringsW(L"%APPDATA%\\Rime", _path, _countof(_path));
-    user_dir = std::wstring(_path);
-  }
-  ret = SetRegKeyValue(HKEY_CURRENT_USER, KEY, L"RimeUserDir", user_dir.c_str(),
-                       REG_SZ, false);
-  if (FAILED(HRESULT_FROM_WIN32(ret))) {
-    MSG_BY_IDS(IDS_STR_ERR_WRITE_USER_DIR, IDS_STR_INSTALL_FAILED,
-               MB_ICONERROR | MB_OK);
-    return 1;
-  }
-  ret = SetRegKeyValue(HKEY_CURRENT_USER, KEY, L"Hant", (hant ? 1 : 0),
+  ret = SetRegKeyValue(HKEY_CURRENT_USER, KEY, L"Hant", 0,
                        REG_DWORD, false);
   if (FAILED(HRESULT_FROM_WIN32(ret))) {
     MSG_BY_IDS(IDS_STR_ERR_WRITE_HANT, IDS_STR_INSTALL_FAILED,
@@ -123,13 +100,16 @@ static int CustomInstall(bool installing) {
   if (_has_installed) {
     std::wstring dir(install_dir());
     std::thread th([dir]() {
-      ShellExecuteW(NULL, NULL, (dir + L"\\WeaselServer.exe").c_str(), L"/q",
-                    NULL, SW_SHOWNORMAL);
+      ShellExecuteW(NULL, NULL,
+                    (dir + L"\\" + WUBIPINYIN_SERVER_EXECUTABLE).c_str(),
+                    L"/q", NULL, SW_SHOWNORMAL);
       Sleep(500);
-      ShellExecuteW(NULL, NULL, (dir + L"\\WeaselServer.exe").c_str(), L"",
-                    NULL, SW_SHOWNORMAL);
+      ShellExecuteW(NULL, NULL,
+                    (dir + L"\\" + WUBIPINYIN_SERVER_EXECUTABLE).c_str(),
+                    L"", NULL, SW_SHOWNORMAL);
       Sleep(500);
-      ShellExecuteW(NULL, NULL, (dir + L"\\WeaselDeployer.exe").c_str(),
+      ShellExecuteW(NULL, NULL,
+                    (dir + L"\\" + WUBIPINYIN_DEPLOYER_EXECUTABLE).c_str(),
                     L"/deploy", NULL, SW_SHOWNORMAL);
     });
     th.detach();
@@ -140,12 +120,6 @@ static int CustomInstall(bool installing) {
   return 0;
 }
 
-LPCTSTR GetParamByPrefix(LPCTSTR lpCmdLine, LPCTSTR prefix) {
-  return (wcsncmp(lpCmdLine, prefix, wcslen(prefix)) == 0)
-             ? (lpCmdLine + wcslen(prefix))
-             : 0;
-}
-
 static int Run(LPTSTR lpCmdLine) {
   constexpr bool silent = true;
   // parameter /? or /help to show commandline args
@@ -153,27 +127,19 @@ static int Run(LPTSTR lpCmdLine) {
     WCHAR msg[1024] = {0};
     if (LoadString(GetModuleHandle(NULL), IDS_STR_HELP, msg,
                    sizeof(msg) / sizeof(TCHAR))) {
-      MessageBox(NULL, msg, L"WeaselSetup", MB_ICONINFORMATION | MB_OK);
+      MessageBox(NULL, msg, WUBIPINYIN_PRODUCT_NAME,
+                 MB_ICONINFORMATION | MB_OK);
     } else {
       MessageBox(
           NULL,
-          L"Usage: WeaselSetup.exe [options]\n"
+          L"Usage: WubiPinyinSetup.exe [options]\n"
           L"/? or /help    - Show this help message\n"
-          L"/u             - Uninstall Weasel\n"
-          L"/i             - Install Weasel\n"
-          L"/s             - Install Weasel (Simplified Chinese)\n"
-          L"/t             - Install Weasel (Traditional Chinese)\n"
-          L"/ls            - Set Weasel language to Simplified Chinese\n"
-          L"/lt            - Set Weasel language to Traditional Chinese\n"
-          L"/le            - Set Weasel language to English\n"
-          L"/eu            - Enable automatic update check\n"
-          L"/du            - Disable automatic update check\n"
+          L"/u             - Uninstall WubiPinyin\n"
+          L"/i             - Install WubiPinyin\n"
+          L"/s             - Install WubiPinyin\n"
           L"/toggleime     - Toggle IME on open/close(ctrl+space)\n"
-          L"/toggleascii   - Toggle ASCII on open/close(ctrl+space)\n"
-          L"/testing       - Set update channel to testing\n"
-          L"/release       - Set update channel to release\n"
-          L"/userdir:<dir> - Set user directory\n",
-          L"WeaselSetup", MB_ICONINFORMATION | MB_OK);
+          L"/toggleascii   - Toggle ASCII on open/close(ctrl+space)\n",
+          WUBIPINYIN_PRODUCT_NAME, MB_ICONINFORMATION | MB_OK);
     }
     return 0;
   }
@@ -185,48 +151,25 @@ static int Run(LPTSTR lpCmdLine) {
       return RestartAsAdmin(lpCmdLine);
   }
 
-  if (auto res = GetParamByPrefix(lpCmdLine, L"/userdir:")) {
-    return SetRegKeyValue(HKEY_CURRENT_USER, L"Software\\Rime\\weasel",
-                          L"RimeUserDir", res, REG_SZ);
-  }
-
   if (!wcscmp(L"/ls", lpCmdLine)) {
-    return SetRegKeyValue(HKEY_CURRENT_USER, L"Software\\Rime\\weasel",
+    return SetRegKeyValue(HKEY_CURRENT_USER, WEASEL_REG_KEY,
                           L"Language", L"chs", REG_SZ);
   } else if (!wcscmp(L"/lt", lpCmdLine)) {
-    return SetRegKeyValue(HKEY_CURRENT_USER, L"Software\\Rime\\weasel",
+    return SetRegKeyValue(HKEY_CURRENT_USER, WEASEL_REG_KEY,
                           L"Language", L"cht", REG_SZ);
   } else if (!wcscmp(L"/le", lpCmdLine)) {
-    return SetRegKeyValue(HKEY_CURRENT_USER, L"Software\\Rime\\weasel",
+    return SetRegKeyValue(HKEY_CURRENT_USER, WEASEL_REG_KEY,
                           L"Language", L"eng", REG_SZ);
   }
 
-  if (!wcscmp(L"/eu", lpCmdLine)) {
-    return SetRegKeyValue(HKEY_CURRENT_USER, L"Software\\Rime\\weasel\\Updates",
-                          L"CheckForUpdates", L"1", REG_SZ);
-  }
-  if (!wcscmp(L"/du", lpCmdLine)) {
-    return SetRegKeyValue(HKEY_CURRENT_USER, L"Software\\Rime\\weasel\\Updates",
-                          L"CheckForUpdates", L"0", REG_SZ);
-  }
-
   if (!wcscmp(L"/toggleime", lpCmdLine)) {
-    return SetRegKeyValue(HKEY_CURRENT_USER, L"Software\\Rime\\weasel",
+    return SetRegKeyValue(HKEY_CURRENT_USER, WEASEL_REG_KEY,
                           L"ToggleImeOnOpenClose", L"yes", REG_SZ);
   }
   if (!wcscmp(L"/toggleascii", lpCmdLine)) {
-    return SetRegKeyValue(HKEY_CURRENT_USER, L"Software\\Rime\\weasel",
+    return SetRegKeyValue(HKEY_CURRENT_USER, WEASEL_REG_KEY,
                           L"ToggleImeOnOpenClose", L"no", REG_SZ);
   }
-  if (!wcscmp(L"/testing", lpCmdLine)) {
-    return SetRegKeyValue(HKEY_CURRENT_USER, L"Software\\Rime\\weasel",
-                          L"UpdateChannel", L"testing", REG_SZ);
-  }
-  if (!wcscmp(L"/release", lpCmdLine)) {
-    return SetRegKeyValue(HKEY_CURRENT_USER, L"Software\\Rime\\weasel",
-                          L"UpdateChannel", L"release", REG_SZ);
-  }
-
   if (!IsProcAdmin()) {
     return RestartAsAdmin(lpCmdLine);
   }
@@ -234,9 +177,8 @@ static int Run(LPTSTR lpCmdLine) {
   bool hans = !wcscmp(L"/s", lpCmdLine);
   if (hans)
     return install(false, silent);
-  bool hant = !wcscmp(L"/t", lpCmdLine);
-  if (hant)
-    return install(true, silent);
+  if (!wcscmp(L"/t", lpCmdLine))
+    return install(false, silent);
   bool installing = !wcscmp(L"/i", lpCmdLine);
   return CustomInstall(installing);
 }

@@ -1,51 +1,33 @@
-﻿【小狼毫】輸入法
-================
+﻿# 五笔·拼音
 
-基於 中州韻輸入法引擎／Rime Input Method Engine 等開源技術
+基于 Rime 输入法引擎和 rime/weasel 的 GPLv3 派生项目。首版提供简体中文 86 五笔与全拼在同一 composition 中的自动竞争输入。
 
-式恕堂 版權所無
+## MVP 平台边界
 
-[![Download](https://img.shields.io/github/v/release/rime/weasel)](https://github.com/rime/weasel/releases/latest)
-[![Build status](https://github.com/rime/weasel/actions/workflows/commit-ci.yml/badge.svg)](https://github.com/rime/weasel/actions/workflows/commit-ci.yml)
-[![GitHub Tag](https://img.shields.io/github/tag/rime/weasel.svg)](https://github.com/rime/weasel)
+- 仅支持 Windows 11 x64，安装程序会拒绝 Windows 10、x86 和 ARM64。
+- 安装包同时包含 x86 和 x64 TIP DLL；x64 Broker、Deployer 和 WinUI 3 设置程序只在 x64 上运行。
+- `WubiPinyinSetup.exe` 故意保持为 32 位注册引导器，用于注册两种 TIP 位数；它不是设置程序。
+- 学习、设置和用户词库仅保存在本机 `%AppData%\WubiPinyin`。不提供云同步、自动更新、双拼、模糊音或繁体输入。
 
-授權條款：GPLv3
+## 安装
 
-項目主頁：https://rime.im
-
-您可能還需要 RIME 用於其他操作系統的發行版：
-
-  * ibus-rime、fcitx5-rime 或 fcitx-rime 用於 Linux
-  * 【鼠鬚管】用於 macOS （64位）
-
-安裝輸入法
-----------
-
-本品適用於 Windows 8.1 ~ Windows 11
-
-初次安裝時，安裝程序將顯示「安裝選項」對話框。
-
-若要將【小狼毫】註冊到繁體中文（臺灣）鍵盤佈局，請在「輸入語言」欄選擇「中文（臺灣）」，再點擊「安裝」按鈕。
-
-安裝完成後，仍可由開始菜單打開「安裝選項」更改輸入語言。
+运行未签名的个人安装包后，开始菜单中的“设置”会打开 x64 设置程序。卸载时默认保留用户词库和设置；只有明确确认后才删除它们。
 
 使用輸入法
 ----------
 
-選取輸入法指示器菜單裏的【中】字樣圖標，開始用小狼毫寫字。
+選取輸入法指示器菜單裏的【中】字樣圖標，開始用五笔·拼音寫字。
 
-可通過快捷鍵 <kbd>Ctrl+`</kbd> 或 <kbd>F4</kbd> 呼出方案選單、切換輸入方式。
+可通過 <kbd>Ctrl+Shift+A</kbd>、<kbd>Ctrl+Shift+W</kbd>、<kbd>Ctrl+Shift+P</kbd> 臨時切換自動、五笔與拼音路由。
 
 定製輸入法
 ----------
 
-通過 開始菜單 » 小狼毫輸入法 訪問設定工具及常用位置。
+通過開始菜單中的五笔·拼音設定工具管理輸入、外觀、用戶詞庫與學習資料。
 
-用戶詞庫、配置文件位於 `%AppData%\Rime`，可通過菜單中的「用戶文件夾」打開。高水平玩家調教 Rime 輸入法常會用到。
+用戶詞庫和設定位於 `%AppData%\WubiPinyin`；設定程式的「關於」頁會顯示資料位置。手工詞條由 Broker 寫入並在維護流程中更新 Rime 詞典。
 
-修改詞庫、配置文件後，須「重新部署」方可生效。
-
-定製 Rime 的方法，請參考 Wiki [《定製指南》](https://github.com/rime/home/wiki/CustomizationGuide)。如需定製 Weasel 獨有的樣式和行為，請參考本倉庫 [Wiki 頁面](https://github.com/rime/weasel/wiki)。
+碼表來源、鎖定版本和歸屬說明見 [WubiPinyinData/THIRD_PARTY_NOTICES.md](WubiPinyinData/THIRD_PARTY_NOTICES.md) 與 [WubiPinyinData/sources.lock.json](WubiPinyinData/sources.lock.json)。
 
 致謝
 ----
@@ -61,9 +43,6 @@
     - 發明人：朱邦復先生
     - 碼表源自 www.chinesecj.com
     - 構詞碼表作者：惜緣
-
-  【五笔】【粵拼】【上海／蘇州吳語】【中古漢語拼音】【國際音標】等衆多方案
-  不再以安裝包預裝形式提供。可由 <https://github.com/rime/plum> 下載安裝。
 
 ### 程序設計：
 
@@ -93,7 +72,6 @@
   * [marisa-trie](https://github.com/s-yata/marisa-trie) (BSD 2-Clause License, LGPL 2.1)
   * [OpenCC / 開放中文轉換](https://github.com/BYVoid/OpenCC) (Apache License 2.0)
   * [plum](https://github.com/rime/plum) (GNU Lesser General Public License v3.0)
-  * [WinSparkle](https://github.com/vslavik/winsparkle) (MIT License)
   * [yaml-cpp](https://github.com/jbeder/yaml-cpp) (MIT License)
   * [7-Zip](https://www.7-zip.org) (GNU LGPLv2.1+ with unRAR restriction)
 

@@ -16,6 +16,14 @@ void WeaselTSF::_ProcessKeyEvent(WPARAM wParam, LPARAM lParam, BOOL* pfEaten) {
     return;
   }
 
+  // Input-scope reads run in an edit session and are therefore asynchronous
+  // with respect to TSF key callbacks. Treat an unknown scope as protected so
+  // no password keystroke reaches the Broker before the scope is resolved.
+  if (_ShouldBypassForPasswordInput()) {
+    *pfEaten = FALSE;
+    return;
+  }
+
   // if server connection is Not OK, don't eat it.
   if (!_EnsureServerConnected()) {
     *pfEaten = FALSE;

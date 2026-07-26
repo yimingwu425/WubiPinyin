@@ -1,0 +1,8 @@
+namespace WubiPinyinSettings
+{
+    [default_interface]
+    runtimeclass LearningPage : Microsoft.UI.Xaml.Controls.Page
+    {
+        LearningPage();
+    }
+}
