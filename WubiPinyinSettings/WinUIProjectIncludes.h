@@ -1,6 +1,8 @@
 #pragma once
 
 #include <unknwn.h>
+#include <Windows.h>
+#undef GetCurrentTime
 #include <winrt/Windows.Foundation.h>
 #include <winrt/Windows.Foundation.Collections.h>
 #include <winrt/Windows.ApplicationModel.Activation.h>
