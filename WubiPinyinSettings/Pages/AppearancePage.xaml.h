@@ -1,5 +1,6 @@
 #pragma once
 
+#include <winrt/WubiPinyinSettings.h>
 #include "Pages/AppearancePage.xaml.g.h"
 #include <winrt/Microsoft.UI.Xaml.Controls.h>
 #include <winrt/Microsoft.UI.Xaml.Controls.Primitives.h>

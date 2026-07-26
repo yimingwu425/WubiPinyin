@@ -1,5 +1,6 @@
 #pragma once
 
+#include <winrt/WubiPinyinSettings.h>
 #include "Pages/AboutPage.xaml.g.h"
 
 namespace winrt::WubiPinyinSettings::implementation {
