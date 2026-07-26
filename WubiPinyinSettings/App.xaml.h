@@ -1,6 +1,6 @@
 #pragma once
 
-#include "App.g.h"
+#include "App.xaml.g.h"
 #include <winrt/Microsoft.UI.Xaml.h>
 
 namespace winrt::WubiPinyinSettings::implementation {
