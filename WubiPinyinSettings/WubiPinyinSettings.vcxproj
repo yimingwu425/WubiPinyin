@@ -152,6 +152,7 @@
 
   <ItemGroup>
     <ClInclude Include="App.xaml.h" />
+    <ClInclude Include="pch.h" />
     <ClInclude Include="SettingsClient.h" />
     <ClInclude Include="WinUIProjectIncludes.h" />
     <ClInclude Include="MainWindow.xaml.h" />
