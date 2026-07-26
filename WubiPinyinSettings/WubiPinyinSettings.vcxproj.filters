@@ -41,6 +41,7 @@
   <ItemGroup>
     <ClInclude Include="App.xaml.h"><Filter>Header Files</Filter></ClInclude>
     <ClInclude Include="SettingsClient.h"><Filter>Header Files</Filter></ClInclude>
+    <ClInclude Include="WinUIProjectIncludes.h"><Filter>Header Files</Filter></ClInclude>
     <ClInclude Include="MainWindow.xaml.h"><Filter>Header Files</Filter></ClInclude>
     <ClInclude Include="SettingsSession.h"><Filter>Header Files</Filter></ClInclude>
     <ClInclude Include="Pages\AboutPage.xaml.h"><Filter>Header Files</Filter></ClInclude>

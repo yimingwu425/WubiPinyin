@@ -87,7 +87,7 @@
       <PrecompiledHeader>NotUsing</PrecompiledHeader>
       <PreprocessorDefinitions>UNICODE;_UNICODE;WIN32_LEAN_AND_MEAN;NOMINMAX;DISABLE_XAML_GENERATED_MAIN;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <AdditionalIncludeDirectories>$(GeneratedFilesDir);$(MSBuildThisFileDirectory)..\include;$(MSBuildThisFileDirectory)..\WubiPinyinCore;$(BOOST_ROOT);%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
-      <ForcedIncludeFiles>unknwn.h;%(ForcedIncludeFiles)</ForcedIncludeFiles>
+      <ForcedIncludeFiles>$(MSBuildThisFileDirectory)WinUIProjectIncludes.h;%(ForcedIncludeFiles)</ForcedIncludeFiles>
     </ClCompile>
     <Link>
       <SubSystem>Windows</SubSystem>
@@ -153,6 +153,7 @@
   <ItemGroup>
     <ClInclude Include="App.xaml.h" />
     <ClInclude Include="SettingsClient.h" />
+    <ClInclude Include="WinUIProjectIncludes.h" />
     <ClInclude Include="MainWindow.xaml.h" />
     <ClInclude Include="SettingsSession.h" />
     <ClInclude Include="Pages\AboutPage.xaml.h" />
