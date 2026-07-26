@@ -6,6 +6,10 @@
 
 namespace {
 
+const GUID kGuidPropInputScope = {
+    0x1713dd5a, 0x68e7, 0x4a5b,
+    {0x9a, 0xf6, 0x59, 0x2a, 0x59, 0x5c, 0x77, 0x8d}};
+
 bool IsSensitiveInputScope(InputScope scope) {
   switch (scope) {
     case IS_PASSWORD:
@@ -197,7 +201,7 @@ void WeaselTSF::_ReadPasswordInputScope(ITfContext* pContext,
   }
 
   com_ptr<ITfProperty> property;
-  if (SUCCEEDED(pContext->GetProperty(GUID_PROP_INPUTSCOPE, &property)) &&
+  if (SUCCEEDED(pContext->GetProperty(kGuidPropInputScope, &property)) &&
       property != nullptr) {
     VARIANT value;
     VariantInit(&value);

@@ -167,7 +167,7 @@ bool WeaselServerApp::ApplySettings(
 bool WeaselServerApp::SetRoute(std::uint64_t session_id,
                                wubipinyin::HybridRoute route,
                                std::string* error) {
-  if (session_id > std::numeric_limits<DWORD>::max()) {
+  if (session_id > (std::numeric_limits<DWORD>::max)()) {
     if (error) {
       *error = "The input session id is invalid";
     }
@@ -182,7 +182,7 @@ bool WeaselServerApp::SetRoute(std::uint64_t session_id,
 }
 
 bool WeaselServerApp::CommitRaw(std::uint64_t session_id, std::string* error) {
-  if (session_id > std::numeric_limits<DWORD>::max()) {
+  if (session_id > (std::numeric_limits<DWORD>::max)()) {
     if (error) {
       *error = "The input session id is invalid";
     }

@@ -1,5 +1,5 @@
 diff --git a/src/rime/gear/gears_module.cc b/src/rime/gear/gears_module.cc
-index 59679b0..e9f1125 100644
+index 59679b07..e9f11252 100644
 --- a/src/rime/gear/gears_module.cc
 +++ b/src/rime/gear/gears_module.cc
 @@ -18,0 +19 @@
@@ -7,7 +7,7 @@ index 59679b0..e9f1125 100644
 @@ -87,0 +89 @@ static void rime_gears_initialize() {
 +  r.Register("hybrid_filter", new Component<HybridFilter>);
 diff --git a/src/rime/gear/memory.cc b/src/rime/gear/memory.cc
-index ad475ca..f33a68b 100644
+index ad475cab..f33a68b0 100644
 --- a/src/rime/gear/memory.cc
 +++ b/src/rime/gear/memory.cc
 @@ -102 +102,2 @@ void Memory::OnCommit(Context* ctx) {
@@ -15,7 +15,7 @@ index ad475ca..f33a68b 100644
 +  if (!user_dict_ || user_dict_->readonly() ||
 +      ctx->get_option("disable_learning"))
 diff --git a/src/rime_api_impl.h b/src/rime_api_impl.h
-index 6e906cf..5bff772 100644
+index 6e906cfe..5bff7721 100644
 --- a/src/rime_api_impl.h
 +++ b/src/rime_api_impl.h
 @@ -5,0 +6,2 @@
@@ -38,7 +38,7 @@ index 6e906cf..5bff772 100644
 +  dest->reserved = reinterpret_cast<void*>(source_mask);
 diff --git a/src/rime/gear/hybrid_filter.cc b/src/rime/gear/hybrid_filter.cc
 new file mode 100644
-index 0000000..a230f47
+index 00000000..a230f473
 --- /dev/null
 +++ b/src/rime/gear/hybrid_filter.cc
 @@ -0,0 +1,407 @@
@@ -451,7 +451,7 @@ index 0000000..a230f47
 +}  // namespace rime
 diff --git a/src/rime/gear/hybrid_filter.h b/src/rime/gear/hybrid_filter.h
 new file mode 100644
-index 0000000..b4ad41f
+index 00000000..b4ad41f5
 --- /dev/null
 +++ b/src/rime/gear/hybrid_filter.h
 @@ -0,0 +1,72 @@
@@ -529,10 +529,10 @@ index 0000000..b4ad41f
 +#endif  // RIME_HYBRID_FILTER_H_
 diff --git a/test/hybrid_filter_test.cc b/test/hybrid_filter_test.cc
 new file mode 100644
-index 0000000..82ef871
+index 00000000..7072e6a5
 --- /dev/null
 +++ b/test/hybrid_filter_test.cc
-@@ -0,0 +1,271 @@
+@@ -0,0 +1,272 @@
 +//
 +// Copyright RIME Developers
 +// Distributed under the BSD License
@@ -543,6 +543,7 @@ index 0000000..82ef871
 +#include <gtest/gtest.h>
 +#include <rime/candidate.h>
 +#include <rime/config.h>
++#include <rime/context.h>
 +#include <rime/dict/vocabulary.h>
 +#include <rime/engine.h>
 +#include <rime/language.h>
