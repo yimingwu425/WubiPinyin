@@ -8,7 +8,7 @@
 #include <string_view>
 
 #ifdef _WIN32
-#include <winsqlite3.h>
+#include <winsqlite/winsqlite3.h>
 #include <windows.h>
 #pragma comment(lib, "winsqlite3.lib")
 #else
