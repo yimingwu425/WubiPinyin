@@ -50,15 +50,20 @@ void MainWindow::SelectInitialPage(hstring const& tag) {
 
 void MainWindow::NavigateTo(hstring const& tag) {
   if (tag == L"input") {
-    ContentFrame().Navigate(xaml_typename<InputPage>());
+    ContentFrame().Navigate(
+        xaml_typename<winrt::WubiPinyinSettings::InputPage>());
   } else if (tag == L"appearance") {
-    ContentFrame().Navigate(xaml_typename<AppearancePage>());
+    ContentFrame().Navigate(
+        xaml_typename<winrt::WubiPinyinSettings::AppearancePage>());
   } else if (tag == L"dictionary") {
-    ContentFrame().Navigate(xaml_typename<DictionaryPage>());
+    ContentFrame().Navigate(
+        xaml_typename<winrt::WubiPinyinSettings::DictionaryPage>());
   } else if (tag == L"learning") {
-    ContentFrame().Navigate(xaml_typename<LearningPage>());
+    ContentFrame().Navigate(
+        xaml_typename<winrt::WubiPinyinSettings::LearningPage>());
   } else if (tag == L"about") {
-    ContentFrame().Navigate(xaml_typename<AboutPage>());
+    ContentFrame().Navigate(
+        xaml_typename<winrt::WubiPinyinSettings::AboutPage>());
   }
 }
 
