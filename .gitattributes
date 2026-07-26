@@ -1,0 +1,2 @@
+# Keep serialized git patches byte-stable when Windows checks out the repo.
+patches/*.patch -text
