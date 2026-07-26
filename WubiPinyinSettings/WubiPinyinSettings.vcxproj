@@ -80,7 +80,7 @@
     <ClCompile>
       <LanguageStandard>stdcpp20</LanguageStandard>
       <ConformanceMode>true</ConformanceMode>
-      <AdditionalOptions>/permissive- %(AdditionalOptions)</AdditionalOptions>
+      <AdditionalOptions>/permissive- /utf-8 %(AdditionalOptions)</AdditionalOptions>
       <WarningLevel>Level4</WarningLevel>
       <TreatWarningAsError>true</TreatWarningAsError>
       <PrecompiledHeader>NotUsing</PrecompiledHeader>
