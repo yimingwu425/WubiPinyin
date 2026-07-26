@@ -1,6 +1,7 @@
 #pragma once
 
 #include "WinUIProjectIncludes.h"
+#include "App.xaml.h"
 #include "MainWindow.xaml.h"
 #include "Pages/AboutPage.xaml.h"
 #include "Pages/AppearancePage.xaml.h"
