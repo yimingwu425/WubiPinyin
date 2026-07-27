@@ -24,7 +24,7 @@ if not defined VERSION_MINOR set VERSION_MINOR=17
 if not defined VERSION_PATCH set VERSION_PATCH=4
 
 if not defined WEASEL_VERSION set WEASEL_VERSION=%VERSION_MAJOR%.%VERSION_MINOR%.%VERSION_PATCH%
-if not defined WEASEL_BUILD set WEASEL_BUILD=0
+if not defined WEASEL_BUILD set WEASEL_BUILD=1
 
 rem use numeric build version for release build
 set PRODUCT_VERSION=%WEASEL_VERSION%.%WEASEL_BUILD%

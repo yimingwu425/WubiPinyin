@@ -7,9 +7,9 @@
 
 面向 Windows 11 的本地五笔、拼音自动输入法。它在同一个输入框、同一次 composition 中同时运行 86 五笔和全拼解码，统一排序、去重并展示候选词。
 
-> 当前版本：[`0.17.4.0`](https://github.com/yimingwu425/WubiPinyin/releases/tag/0.17.4.0)
+> 当前版本：[`0.17.4.1`](https://github.com/yimingwu425/WubiPinyin/releases/tag/0.17.4.1)
 >
-> [下载 Windows 安装包](https://github.com/yimingwu425/WubiPinyin/releases/download/0.17.4.0/wubipinyin-0.17.4.0-installer.exe)
+> [下载 Windows 安装包](https://github.com/yimingwu425/WubiPinyin/releases/download/0.17.4.1/wubipinyin-0.17.4.1-installer.exe)
 
 ## 功能
 
@@ -34,7 +34,7 @@
 
 ## 安装
 
-1. 从 [Releases](https://github.com/yimingwu425/WubiPinyin/releases/latest) 下载 `wubipinyin-0.17.4.0-installer.exe`。
+1. 从 [Releases](https://github.com/yimingwu425/WubiPinyin/releases/latest) 下载 `wubipinyin-0.17.4.1-installer.exe`。
 2. 运行安装程序并完成 Windows 的权限确认。
 3. 从任务栏输入法选择器中选择“五笔·拼音”。
 4. 从开始菜单打开“五笔·拼音设置”管理输入方式、外观和用户词库。
