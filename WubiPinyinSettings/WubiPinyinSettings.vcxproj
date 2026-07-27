@@ -141,46 +141,88 @@
     </Page>
   </ItemGroup>
   <ItemGroup>
-    <Midl Include="App.idl" />
-    <Midl Include="MainWindow.idl" />
-    <Midl Include="Pages\AboutPage.idl" />
-    <Midl Include="Pages\AppearancePage.idl" />
-    <Midl Include="Pages\DictionaryPage.idl" />
-    <Midl Include="Pages\InputPage.idl" />
-    <Midl Include="Pages\LearningPage.idl" />
+    <Midl Include="App.idl">
+      <DependentUpon>App.xaml</DependentUpon>
+    </Midl>
+    <Midl Include="MainWindow.idl">
+      <DependentUpon>MainWindow.xaml</DependentUpon>
+    </Midl>
+    <Midl Include="Pages\AboutPage.idl">
+      <DependentUpon>Pages\AboutPage.xaml</DependentUpon>
+    </Midl>
+    <Midl Include="Pages\AppearancePage.idl">
+      <DependentUpon>Pages\AppearancePage.xaml</DependentUpon>
+    </Midl>
+    <Midl Include="Pages\DictionaryPage.idl">
+      <DependentUpon>Pages\DictionaryPage.xaml</DependentUpon>
+    </Midl>
+    <Midl Include="Pages\InputPage.idl">
+      <DependentUpon>Pages\InputPage.xaml</DependentUpon>
+    </Midl>
+    <Midl Include="Pages\LearningPage.idl">
+      <DependentUpon>Pages\LearningPage.xaml</DependentUpon>
+    </Midl>
   </ItemGroup>
 
   <ItemGroup>
-    <ClInclude Include="App.xaml.h" />
+    <ClInclude Include="App.xaml.h">
+      <DependentUpon>App.xaml</DependentUpon>
+    </ClInclude>
     <ClInclude Include="pch.h" />
     <ClInclude Include="SettingsClient.h" />
     <ClInclude Include="WinUIProjectIncludes.h" />
-    <ClInclude Include="MainWindow.xaml.h" />
+    <ClInclude Include="MainWindow.xaml.h">
+      <DependentUpon>MainWindow.xaml</DependentUpon>
+    </ClInclude>
     <ClInclude Include="SettingsSession.h" />
-    <ClInclude Include="Pages\AboutPage.xaml.h" />
-    <ClInclude Include="Pages\AppearancePage.xaml.h" />
-    <ClInclude Include="Pages\DictionaryPage.xaml.h" />
-    <ClInclude Include="Pages\InputPage.xaml.h" />
-    <ClInclude Include="Pages\LearningPage.xaml.h" />
+    <ClInclude Include="Pages\AboutPage.xaml.h">
+      <DependentUpon>Pages\AboutPage.xaml</DependentUpon>
+    </ClInclude>
+    <ClInclude Include="Pages\AppearancePage.xaml.h">
+      <DependentUpon>Pages\AppearancePage.xaml</DependentUpon>
+    </ClInclude>
+    <ClInclude Include="Pages\DictionaryPage.xaml.h">
+      <DependentUpon>Pages\DictionaryPage.xaml</DependentUpon>
+    </ClInclude>
+    <ClInclude Include="Pages\InputPage.xaml.h">
+      <DependentUpon>Pages\InputPage.xaml</DependentUpon>
+    </ClInclude>
+    <ClInclude Include="Pages\LearningPage.xaml.h">
+      <DependentUpon>Pages\LearningPage.xaml</DependentUpon>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
-    <ClCompile Include="App.xaml.cpp" />
+    <ClCompile Include="App.xaml.cpp">
+      <DependentUpon>App.xaml</DependentUpon>
+    </ClCompile>
     <ClCompile Include="main.cpp" />
     <ClCompile Include="$(GeneratedFilesDir)module.g.cpp" />
     <ClCompile Include="SettingsClient.cpp" />
     <ClCompile Include="..\WubiPinyinCore\WubiPinyinControlPayload.cpp">
       <PrecompiledHeader>NotUsing</PrecompiledHeader>
     </ClCompile>
-    <ClCompile Include="MainWindow.xaml.cpp" />
+    <ClCompile Include="MainWindow.xaml.cpp">
+      <DependentUpon>MainWindow.xaml</DependentUpon>
+    </ClCompile>
     <ClCompile Include="SettingsSession.cpp" />
     <ClCompile Include="..\WubiPinyinCore\WubiPinyinControlProtocol.cpp">
       <PrecompiledHeader>NotUsing</PrecompiledHeader>
     </ClCompile>
-    <ClCompile Include="Pages\AboutPage.xaml.cpp" />
-    <ClCompile Include="Pages\AppearancePage.xaml.cpp" />
-    <ClCompile Include="Pages\DictionaryPage.xaml.cpp" />
-    <ClCompile Include="Pages\InputPage.xaml.cpp" />
-    <ClCompile Include="Pages\LearningPage.xaml.cpp" />
+    <ClCompile Include="Pages\AboutPage.xaml.cpp">
+      <DependentUpon>Pages\AboutPage.xaml</DependentUpon>
+    </ClCompile>
+    <ClCompile Include="Pages\AppearancePage.xaml.cpp">
+      <DependentUpon>Pages\AppearancePage.xaml</DependentUpon>
+    </ClCompile>
+    <ClCompile Include="Pages\DictionaryPage.xaml.cpp">
+      <DependentUpon>Pages\DictionaryPage.xaml</DependentUpon>
+    </ClCompile>
+    <ClCompile Include="Pages\InputPage.xaml.cpp">
+      <DependentUpon>Pages\InputPage.xaml</DependentUpon>
+    </ClCompile>
+    <ClCompile Include="Pages\LearningPage.xaml.cpp">
+      <DependentUpon>Pages\LearningPage.xaml</DependentUpon>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <Manifest Include="app.manifest" />
