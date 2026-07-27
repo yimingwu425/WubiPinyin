@@ -1,3 +1,4 @@
+# -*- coding: utf-8 -*-
 ; WubiPinyin installation script. Derived from Weasel; see LICENSE.txt.
 !include FileFunc.nsh
 !include LogicLib.nsh

@@ -190,7 +190,7 @@ void WeaselTSF::_ReadPasswordInputScope(ITfContext* pContext,
     return;
   }
 
-  PasswordInputScopeState state = PasswordInputScopeState::kUnknown;
+  PasswordInputScopeState state = _password_input_scope_state;
   TF_SELECTION selection = {};
   ULONG selection_count = 0;
   if (FAILED(pContext->GetSelection(ecReadOnly, TF_DEFAULT_SELECTION, 1,
@@ -242,7 +242,7 @@ void WeaselTSF::_SetPasswordInputScopeState(PasswordInputScopeState state) {
   const bool was_protected = _ShouldBypassForPasswordInput();
   const bool will_be_protected =
       _password_input_protection &&
-      state != PasswordInputScopeState::kNonSensitive;
+      state == PasswordInputScopeState::kSensitive;
   if (was_protected != will_be_protected) {
     _fTestKeyDownPending = FALSE;
     _fTestKeyUpPending = FALSE;
@@ -258,8 +258,8 @@ void WeaselTSF::_SetPasswordInputProtection(bool enabled) {
 
   const bool was_protected = _ShouldBypassForPasswordInput();
   const bool will_be_protected =
-      enabled && _password_input_scope_state !=
-                     PasswordInputScopeState::kNonSensitive;
+      enabled && _password_input_scope_state ==
+                     PasswordInputScopeState::kSensitive;
   if (was_protected != will_be_protected) {
     _fTestKeyDownPending = FALSE;
     _fTestKeyUpPending = FALSE;
@@ -270,6 +270,5 @@ void WeaselTSF::_SetPasswordInputProtection(bool enabled) {
 
 bool WeaselTSF::_ShouldBypassForPasswordInput() const {
   return _password_input_protection &&
-         _password_input_scope_state !=
-             PasswordInputScopeState::kNonSensitive;
+         _password_input_scope_state == PasswordInputScopeState::kSensitive;
 }

@@ -337,7 +337,7 @@ rem %3 : target_path of rime.dll, base %WEASEL_ROOT% or abs path
   )
 
   if "%1" == "x64" if %verify_hybrid_filter% == 1 (
-    set "GTEST_FILTER=HybridFilterTest.RegistersAsAFilterComponent"
+    set "GTEST_FILTER=HybridFilterTest.*"
     set "build_dir=build_hybrid_filter_test"
     set "rime_install_prefix=%WEASEL_ROOT%\librime\dist_hybrid_filter_test"
     call build.bat static test %rime_build_variant%
@@ -390,6 +390,7 @@ rem ---------------------------------------------------------------------------
 
 :nsis_found
   "%NSIS_EXE%" ^
+    -INPUTCHARSET UTF8 ^
     /DWEASEL_VERSION=%WEASEL_VERSION% ^
     /DWEASEL_BUILD=%WEASEL_BUILD% ^
     /DPRODUCT_VERSION=%PRODUCT_VERSION% ^

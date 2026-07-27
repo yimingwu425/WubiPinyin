@@ -12,7 +12,7 @@
     <Grid x:Name="AppTitleBar" Grid.Row="0" Padding="20,0,0,0">
       <TextBlock
           VerticalAlignment="Center"
-          FontFamily="Segoe UI Variable"
+          FontFamily="{StaticResource SettingsCjkFontFamily}"
           FontSize="14"
           FontWeight="SemiBold"
           Text="五笔·拼音" />
@@ -23,8 +23,9 @@
         AlwaysShowHeader="False"
         IsBackButtonVisible="Collapsed"
         IsSettingsVisible="False"
+        FontFamily="{StaticResource SettingsCjkFontFamily}"
         OpenPaneLength="220"
-        PaneDisplayMode="Left"
+        PaneDisplayMode="Auto"
         SelectionChanged="NavigationRoot_SelectionChanged">
       <controls:NavigationView.MenuItems>
         <controls:NavigationViewItem Content="输入" Tag="input">

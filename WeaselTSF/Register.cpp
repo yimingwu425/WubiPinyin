@@ -51,7 +51,8 @@ BOOL RegisterProfiles() {
       CLSID_TF_InputProcessorProfiles, NULL, CLSCTX_ALL));
   const auto text_service_desc = get_weasel_ime_name();
   const WCHAR* text_service_desc_str = text_service_desc.c_str();
-  ULONG text_service_desc_len = text_service_desc.size() * sizeof(wchar_t);
+  ULONG text_service_desc_len =
+      static_cast<ULONG>(text_service_desc.size());
 
   WCHAR achIconFile[MAX_PATH];
   ULONG cchIconFile =
