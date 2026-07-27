@@ -10,7 +10,7 @@ struct MainWindow : MainWindowT<MainWindow> {
   explicit MainWindow(winrt::hstring const& initial_page);
 
   void NavigationRoot_SelectionChanged(
-      Microsoft::UI::Xaml::Controls::NavigationView const& sender,
+      IInspectable const& sender,
       Microsoft::UI::Xaml::Controls::NavigationViewSelectionChangedEventArgs
           const& args);
 

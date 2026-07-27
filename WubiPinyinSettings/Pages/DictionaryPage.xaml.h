@@ -14,7 +14,7 @@ struct DictionaryPage : DictionaryPageT<DictionaryPage> {
   void Page_Loaded(IInspectable const& sender,
                    Microsoft::UI::Xaml::RoutedEventArgs const& args);
   void SearchBox_TextChanged(
-      Microsoft::UI::Xaml::Controls::TextBox const& sender,
+      IInspectable const& sender,
       Microsoft::UI::Xaml::Controls::TextChangedEventArgs const& args);
   void EntriesList_SelectionChanged(
       IInspectable const& sender,

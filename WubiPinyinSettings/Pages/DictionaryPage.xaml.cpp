@@ -105,7 +105,7 @@ void DictionaryPage::Page_Loaded(IInspectable const&, RoutedEventArgs const&) {
   ReloadEntries();
 }
 
-void DictionaryPage::SearchBox_TextChanged(TextBox const&,
+void DictionaryPage::SearchBox_TextChanged(IInspectable const&,
                                            TextChangedEventArgs const&) {
   RenderEntries();
 }

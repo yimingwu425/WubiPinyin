@@ -29,7 +29,7 @@ MainWindow::MainWindow(hstring const& initial_page) {
 }
 
 void MainWindow::NavigationRoot_SelectionChanged(
-    NavigationView const&,
+    IInspectable const&,
     NavigationViewSelectionChangedEventArgs const& args) {
   const auto item = args.SelectedItem().try_as<NavigationViewItem>();
   if (item) {
